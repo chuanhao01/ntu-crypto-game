@@ -16,26 +16,41 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const formSchema = z.object({
-  username: z.string().min(4, {
-    message: "Username must be at least 4 characters.",
-  }),
-  password: z
-    .string()
-    .min(4, { message: "Password must be at least 4 characters." }),
-}).required();
+const formSchema = z
+  .object({
+    username: z.string().min(4, {
+      message: "Username must be at least 4 characters.",
+    }),
+    password: z
+      .string()
+      .min(4, { message: "Password must be at least 4 characters." }),
+  })
+  .required();
 
 export default function Login() {
-  // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
 
   // 2. Define a submit handler.
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
     console.log(values);
+    console.log(`${process.env.NEXT_PUBLIC_BACKEND_URL}/account`);
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/account`, {
+      method: "POST",
+      body: JSON.stringify(values),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).then(async (res) => {
+      if (!res.ok){
+        console.log("Create account failed");
+      }
+      console.log(await res.json());
+    }).catch((e) => {
+      console.log("Create account failed with error");
+      console.error(e);
+    });
   }
 
   return (
@@ -43,6 +58,7 @@ export default function Login() {
       <Card title="Sign Up">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* TODO: Add validation on the unique username on the backend */}
             <FormField
               control={form.control}
               name="username"
