@@ -17,7 +17,7 @@ import {
 } from "@coinbase/onchainkit/transaction";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 
-type ButtonProps = {
+export type ButtonProps = {
   children: ReactNode;
   variant?: "primary" | "secondary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg";
@@ -78,7 +78,7 @@ type CardProps = {
   onClick?: () => void;
 }
 
-function Card({
+export function Card({
   title,
   children,
   className = "",
