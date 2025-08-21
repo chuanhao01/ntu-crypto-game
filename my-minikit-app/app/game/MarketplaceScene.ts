@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GameState } from './GameState';
+import { CharacterManager } from './CharacterManager';
 
 export class MarketplaceScene extends Phaser.Scene {
   private goldText?: Phaser.GameObjects.Text;
@@ -18,18 +19,38 @@ export class MarketplaceScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load sprite sheets for character display
-    this.load.spritesheet('hero-default', '/sprites/hero-default.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
+    // Load sprites dynamically based on character data
+    const characterManager = CharacterManager.getInstance();
     
-    this.load.spritesheet('monster-default', '/sprites/monster-default.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
+    if (characterManager.isCharactersLoaded()) {
+      const requiredSprites = characterManager.getAllRequiredSprites();
+      
+      console.log(`MarketplaceScene: Loading ${requiredSprites.length} sprites dynamically`);
+      
+      requiredSprites.forEach(sprite => {
+        if (!this.textures.exists(sprite.key)) {
+          this.load.spritesheet(sprite.key, sprite.path, {
+            frameWidth: 64,
+            frameHeight: 64,
+            endFrame: sprite.key.includes('spinning') ? 7 : 3
+          });
+        }
+      });
+    } else {
+      console.warn('MarketplaceScene: Characters not loaded, using fallback sprites');
+      // Load basic sprites as fallback
+      this.load.spritesheet('hero-default', '/sprites/hero-default.png', {
+        frameWidth: 64,
+        frameHeight: 64,
+        endFrame: 3
+      });
+      
+      this.load.spritesheet('monster-default', '/sprites/monster-default.png', {
+        frameWidth: 64,
+        frameHeight: 64,
+        endFrame: 3
+      });
+    }
   }
 
   create() {
@@ -116,22 +137,43 @@ export class MarketplaceScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    if (!this.anims.exists('hero-default-anim')) {
-      this.anims.create({
-        key: 'hero-default-anim',
-        frames: this.anims.generateFrameNumbers('hero-default', { start: 0, end: 3 }),
-        frameRate: 8,
-        repeat: -1
+    const characterManager = CharacterManager.getInstance();
+    
+    if (characterManager.isCharactersLoaded()) {
+      const spriteSets = characterManager.getUniqueSpriteSets();
+      
+      spriteSets.forEach(spriteSet => {
+        const animKey = `${spriteSet}-default-anim`;
+        const spriteKey = `${spriteSet}-default`;
+        
+        if (!this.anims.exists(animKey) && this.textures.exists(spriteKey)) {
+          this.anims.create({
+            key: animKey,
+            frames: this.anims.generateFrameNumbers(spriteKey, { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+          });
+        }
       });
-    }
+    } else {
+      // Fallback animations
+      if (!this.anims.exists('hero-default-anim')) {
+        this.anims.create({
+          key: 'hero-default-anim',
+          frames: this.anims.generateFrameNumbers('hero-default', { start: 0, end: 3 }),
+          frameRate: 8,
+          repeat: -1
+        });
+      }
 
-    if (!this.anims.exists('monster-default-anim')) {
-      this.anims.create({
-        key: 'monster-default-anim',
-        frames: this.anims.generateFrameNumbers('monster-default', { start: 0, end: 3 }),
-        frameRate: 8,
-        repeat: -1
-      });
+      if (!this.anims.exists('monster-default-anim')) {
+        this.anims.create({
+          key: 'monster-default-anim',
+          frames: this.anims.generateFrameNumbers('monster-default', { start: 0, end: 3 }),
+          frameRate: 8,
+          repeat: -1
+        });
+      }
     }
   }
 
@@ -398,83 +440,30 @@ export class MarketplaceScene extends Phaser.Scene {
   }
 
   private generateMarketplaceCharacters() {
-    // Generate 16 random characters for the marketplace
-    const characters = [];
+    const characterManager = CharacterManager.getInstance();
+    
+    if (!characterManager.isCharactersLoaded()) {
+      console.error('Characters not loaded yet');
+      return [];
+    }
 
+    const characters = [];
+    
+    // Generate 16 random characters for the marketplace
     for (let i = 0; i < 16; i++) {
-      const isHero = Math.random() < 0.5;
-      const rarities = ['common', 'rare', 'epic', 'legendary'];
-      const rarity = rarities[Math.floor(Math.random() * rarities.length)] as 'common' | 'rare' | 'epic' | 'legendary';
+      const character = characterManager.getRandomCharacter();
       
-      const character = {
-        id: `marketplace_${Date.now()}_${i}`, // Add unique ID
-        name: isHero ? `Hero ${i + 1}` : `Monster ${i + 1}`,
-        rarity: rarity,
-        sprites: {
-          default: isHero ? 'hero-default' : 'monster-default',
-          spinning: isHero ? 'hero-spinning' : 'monster-spinning',
-          battleLeft: isHero ? 'hero-battle-left' : 'monster-battle-left',
-          battleRight: isHero ? 'hero-battle-right' : 'monster-battle-right'
-        },
-        stats: this.generateStatsForRarity(rarity, isHero),
-        moves: this.generateMovesForCharacter(isHero, rarity)
+      // Create a marketplace-specific character with unique ID
+      const marketplaceChar = {
+        ...character,
+        id: `marketplace_${Date.now()}_${i}`, // Keep unique ID for marketplace
+        originalId: character.id // Store original character ID
       };
 
-      characters.push(character);
+      characters.push(marketplaceChar);
     }
 
     return characters;
-  }
-
-  private generateStatsForRarity(rarity: 'common' | 'rare' | 'epic' | 'legendary', isHero: boolean) {
-    const baseStats = {
-      common: { hp: 80, attack: 12, defense: 8 },
-      rare: { hp: 100, attack: 15, defense: 10 },
-      epic: { hp: 130, attack: 20, defense: 15 },
-      legendary: { hp: 180, attack: 28, defense: 22 }
-    };
-
-    const base = baseStats[rarity];
-    
-    if (isHero) {
-      return {
-        hp: base.hp + 10,
-        attack: base.attack,
-        defense: base.defense + 2
-      };
-    } else {
-      return {
-        hp: base.hp - 5,
-        attack: base.attack + 3,
-        defense: base.defense
-      };
-    }
-  }
-
-  private generateMovesForCharacter(isHero: boolean, rarity: 'common' | 'rare' | 'epic' | 'legendary') {
-    if (isHero) {
-      const heroMoves = [
-        { name: 'Slash', damage: 15, description: 'A quick sword strike' },
-        { name: 'Holy Light', damage: 18, description: 'Divine magic attack' }
-      ];
-      
-      if (rarity === 'legendary' || rarity === 'epic') {
-        heroMoves.push({ name: 'Divine Wrath', damage: 25, description: 'Powerful ultimate ability' });
-      }
-      
-      return heroMoves;
-    } else {
-      const monsterMoves = [
-        { name: 'Claw', damage: 14, description: 'Sharp claw attack' },
-        { name: 'Bite', damage: 16, description: 'Vicious bite' }
-      ];
-      
-      if (rarity === 'legendary' || rarity === 'epic') {
-        monsterMoves.push({ name: 'Rampage', damage: 24, description: 'Devastating berserker attack' });
-      }
-      
-      return monsterMoves;
-    }
   }
 
   private calculateBuyPrice(character: any): number {

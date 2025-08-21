@@ -1,6 +1,6 @@
 from hashlib import pbkdf2_hmac
 import os
-from consts import PASSWORD_APP_ITERS, SALT_SIZE
+from src.consts import PASSWORD_APP_ITERS, SALT_SIZE
 from dataclasses import dataclass
 
 @dataclass

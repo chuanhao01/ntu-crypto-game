@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GameState } from './GameState';
+import { CharacterManager } from './CharacterManager';
 
 export class BattleScene extends Phaser.Scene {
   private playerTeam: any[] = [];
@@ -46,36 +47,39 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load sprite sheets for all animations
-    this.load.spritesheet('hero-default', '/sprites/hero-default.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
+    // Load sprites dynamically based on character data
+    const characterManager = CharacterManager.getInstance();
     
-    this.load.spritesheet('hero-battle-left', '/sprites/hero-battle-left.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
-    
-    this.load.spritesheet('hero-battle-right', '/sprites/hero-battle-right.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
-    
-    this.load.spritesheet('monster-battle-left', '/sprites/monster-battle-left.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
-    
-    this.load.spritesheet('monster-battle-right', '/sprites/monster-battle-right.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
+    if (characterManager.isCharactersLoaded()) {
+      const requiredSprites = characterManager.getAllRequiredSprites();
+      
+      console.log(`BattleScene: Loading ${requiredSprites.length} sprites dynamically`);
+      
+      requiredSprites.forEach(sprite => {
+        if (!this.textures.exists(sprite.key)) {
+          this.load.spritesheet(sprite.key, sprite.path, {
+            frameWidth: 64,
+            frameHeight: 64,
+            endFrame: sprite.key.includes('spinning') ? 7 : 3
+          });
+        }
+      });
+    } else {
+      console.warn('BattleScene: Characters not loaded, using fallback sprites');
+      // Load basic sprites as fallback
+      const fallbackSprites = [
+        'hero-default', 'hero-battle-left', 'hero-battle-right',
+        'monster-battle-left', 'monster-battle-right'
+      ];
+
+      fallbackSprites.forEach(spriteKey => {
+        this.load.spritesheet(spriteKey, `/sprites/${spriteKey}.png`, {
+          frameWidth: 64,
+          frameHeight: 64,
+          endFrame: 3
+        });
+      });
+    }
     
     this.load.image('effects', '/sprites/effects.svg');
   }
@@ -247,19 +251,19 @@ export class BattleScene extends Phaser.Scene {
       .forEach(child => child.destroy());
 
     // Team roster background
-    const rosterBg = this.add.rectangle(208, 550, 400, 80, 0x1A202C)
+    const rosterBg = this.add.rectangle(208, 550, 400, 120, 0x1A202C)
       .setAlpha(0.8)
       .setData('type', 'roster');
 
     // Title for roster
-    this.add.text(208, 495, 'Your Team - Hover to Swap', {
+    this.add.text(208, 525, 'Your Team - Hover to Swap', {
       fontSize: '12px',
       color: '#ffffff'
     }).setOrigin(0.5).setData('type', 'roster');
 
     const startX = 50;
     const spacing = 70;
-    const rosterY = 550;
+    const rosterY = 580;
     
     this.playerTeam.forEach((char: any, index: number) => {
       const x = startX + (index * spacing);
@@ -654,42 +658,52 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    // Hero animations
-    this.anims.create({
-      key: 'hero-default-anim',
-      frames: this.anims.generateFrameNumbers('hero-default', { start: 0, end: 3 }),
-      frameRate: 8,
-      repeat: -1
-    });
+    const characterManager = CharacterManager.getInstance();
+    
+    if (characterManager.isCharactersLoaded()) {
+      const spriteSets = characterManager.getUniqueSpriteSets();
+      
+      spriteSets.forEach(spriteSet => {
+        // Create animations for battle-relevant sprites
+        const battleTypes = ['default', 'battle-left', 'battle-right'];
+        
+        battleTypes.forEach(type => {
+          const animKey = `${spriteSet}-${type}-anim`;
+          const spriteKey = `${spriteSet}-${type}`;
+          
+          if (!this.anims.exists(animKey) && this.textures.exists(spriteKey)) {
+            const frameRate = type.includes('battle') ? 6 : 8;
+            
+            this.anims.create({
+              key: animKey,
+              frames: this.anims.generateFrameNumbers(spriteKey, { start: 0, end: 3 }),
+              frameRate: frameRate,
+              repeat: -1
+            });
+          }
+        });
+      });
+    } else {
+      // Fallback animations
+      const fallbackAnims = [
+        { key: 'hero-default-anim', sprite: 'hero-default', rate: 8 },
+        { key: 'hero-battle-left-anim', sprite: 'hero-battle-left', rate: 6 },
+        { key: 'hero-battle-right-anim', sprite: 'hero-battle-right', rate: 6 },
+        { key: 'monster-battle-left-anim', sprite: 'monster-battle-left', rate: 6 },
+        { key: 'monster-battle-right-anim', sprite: 'monster-battle-right', rate: 6 }
+      ];
 
-    this.anims.create({
-      key: 'hero-battle-left-anim',
-      frames: this.anims.generateFrameNumbers('hero-battle-left', { start: 0, end: 3 }),
-      frameRate: 6,
-      repeat: -1
-    });
-
-    this.anims.create({
-      key: 'hero-battle-right-anim',
-      frames: this.anims.generateFrameNumbers('hero-battle-right', { start: 0, end: 3 }),
-      frameRate: 6,
-      repeat: -1
-    });
-
-    // Monster battle animations
-    this.anims.create({
-      key: 'monster-battle-left-anim',
-      frames: this.anims.generateFrameNumbers('monster-battle-left', { start: 0, end: 3 }),
-      frameRate: 6,
-      repeat: -1
-    });
-
-    this.anims.create({
-      key: 'monster-battle-right-anim',
-      frames: this.anims.generateFrameNumbers('monster-battle-right', { start: 0, end: 3 }),
-      frameRate: 6,
-      repeat: -1
-    });
+      fallbackAnims.forEach(anim => {
+        if (!this.anims.exists(anim.key)) {
+          this.anims.create({
+            key: anim.key,
+            frames: this.anims.generateFrameNumbers(anim.sprite, { start: 0, end: 3 }),
+            frameRate: anim.rate,
+            repeat: -1
+          });
+        }
+      });
+    }
   }
 
   private addTeamIndicators() {

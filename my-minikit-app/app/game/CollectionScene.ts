@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GameState } from './GameState';
+import { CharacterManager } from './CharacterManager';
 
 export class CollectionScene extends Phaser.Scene {
   private goldText?: Phaser.GameObjects.Text;
@@ -15,18 +16,38 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load sprite sheets for collection display
-    this.load.spritesheet('hero-default', '/sprites/hero-default.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
+    // Load sprites dynamically based on character data
+    const characterManager = CharacterManager.getInstance();
     
-    this.load.spritesheet('monster-default', '/sprites/monster-default.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3
-    });
+    if (characterManager.isCharactersLoaded()) {
+      const requiredSprites = characterManager.getAllRequiredSprites();
+      
+      console.log(`CollectionScene: Loading ${requiredSprites.length} sprites dynamically`);
+      
+      requiredSprites.forEach(sprite => {
+        if (!this.textures.exists(sprite.key)) {
+          this.load.spritesheet(sprite.key, sprite.path, {
+            frameWidth: 64,
+            frameHeight: 64,
+            endFrame: sprite.key.includes('spinning') ? 7 : 3
+          });
+        }
+      });
+    } else {
+      console.warn('CollectionScene: Characters not loaded, using fallback sprites');
+      // Load basic sprites as fallback
+      this.load.spritesheet('hero-default', '/sprites/hero-default.png', {
+        frameWidth: 64,
+        frameHeight: 64,
+        endFrame: 3
+      });
+      
+      this.load.spritesheet('monster-default', '/sprites/monster-default.png', {
+        frameWidth: 64,
+        frameHeight: 64,
+        endFrame: 3
+      });
+    }
   }
 
   init() {
@@ -685,24 +706,43 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    // Hero default animation
-    if (!this.anims.exists('hero-default-anim')) {
-      this.anims.create({
-        key: 'hero-default-anim',
-        frames: this.anims.generateFrameNumbers('hero-default', { start: 0, end: 3 }),
-        frameRate: 8,
-        repeat: -1
+    const characterManager = CharacterManager.getInstance();
+    
+    if (characterManager.isCharactersLoaded()) {
+      const spriteSets = characterManager.getUniqueSpriteSets();
+      
+      spriteSets.forEach(spriteSet => {
+        const animKey = `${spriteSet}-default-anim`;
+        const spriteKey = `${spriteSet}-default`;
+        
+        if (!this.anims.exists(animKey) && this.textures.exists(spriteKey)) {
+          this.anims.create({
+            key: animKey,
+            frames: this.anims.generateFrameNumbers(spriteKey, { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+          });
+        }
       });
-    }
+    } else {
+      // Fallback animations
+      if (!this.anims.exists('hero-default-anim')) {
+        this.anims.create({
+          key: 'hero-default-anim',
+          frames: this.anims.generateFrameNumbers('hero-default', { start: 0, end: 3 }),
+          frameRate: 8,
+          repeat: -1
+        });
+      }
 
-    // Monster default animation
-    if (!this.anims.exists('monster-default-anim')) {
-      this.anims.create({
-        key: 'monster-default-anim',
-        frames: this.anims.generateFrameNumbers('monster-default', { start: 0, end: 3 }),
-        frameRate: 8,
-        repeat: -1
-      });
+      if (!this.anims.exists('monster-default-anim')) {
+        this.anims.create({
+          key: 'monster-default-anim',
+          frames: this.anims.generateFrameNumbers('monster-default', { start: 0, end: 3 }),
+          frameRate: 8,
+          repeat: -1
+        });
+      }
     }
   }
 }

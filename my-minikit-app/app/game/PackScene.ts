@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GameState } from './GameState';
+import { CharacterManager } from './CharacterManager';
 
 export class PackScene extends Phaser.Scene {
   private items: Phaser.GameObjects.Container[] = [];
@@ -30,57 +31,48 @@ export class PackScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load hero sprite sheets with correct frame configurations
-    this.load.spritesheet('hero-default', '/sprites/hero-default.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3 // 4x1 frames (0-3)
-    });
+    // Load sprites dynamically based on character data
+    const characterManager = CharacterManager.getInstance();
     
-    this.load.spritesheet('hero-battle-left', '/sprites/hero-battle-left.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3 // 4x1 frames (0-3)
-    });
-    
-    this.load.spritesheet('hero-battle-right', '/sprites/hero-battle-right.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3 // 4x1 frames (0-3)
-    });
-    
-    this.load.spritesheet('hero-spinning', '/sprites/hero-spinning.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 7 // 4x2 frames (0-7)
-    });
-    
-    // Load monster sprite sheets
-    this.load.spritesheet('monster-default', '/sprites/monster-default.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3 // 4x1 frames (0-3)
-    });
-    
-    this.load.spritesheet('monster-battle-left', '/sprites/monster-battle-left.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3 // 4x1 frames (0-3)
-    });
-    
-    this.load.spritesheet('monster-battle-right', '/sprites/monster-battle-right.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 3 // 4x1 frames (0-3)
-    });
-    
-    this.load.spritesheet('monster-spinning', '/sprites/monster-spinning.png', {
-      frameWidth: 64,
-      frameHeight: 64,
-      endFrame: 7 // 4x2 frames (0-7)
-    });
+    if (characterManager.isCharactersLoaded()) {
+      const requiredSprites = characterManager.getAllRequiredSprites();
+      
+      console.log(`PackScene: Loading ${requiredSprites.length} sprites dynamically`);
+      
+      requiredSprites.forEach(sprite => {
+        if (!this.textures.exists(sprite.key)) {
+          this.load.spritesheet(sprite.key, sprite.path, {
+            frameWidth: 64,
+            frameHeight: 64,
+            endFrame: sprite.key.includes('spinning') ? 7 : 3 // 8 frames for spinning, 4 for others
+          });
+        }
+      });
+    } else {
+      console.warn('PackScene: Characters not loaded, using fallback sprites');
+      // Fallback sprites if character data isn't loaded
+      this.loadFallbackSprites();
+    }
     
     this.load.image('effects', '/sprites/effects.svg');
+  }
+
+  private loadFallbackSprites() {
+    // Fallback sprites for hero and monster
+    const fallbackSprites = [
+      'hero-default', 'hero-spinning', 'hero-battle-left', 'hero-battle-right',
+      'monster-default', 'monster-spinning', 'monster-battle-left', 'monster-battle-right'
+    ];
+
+    fallbackSprites.forEach(spriteKey => {
+      if (!this.textures.exists(spriteKey)) {
+        this.load.spritesheet(spriteKey, `/sprites/${spriteKey}.png`, {
+          frameWidth: 64,
+          frameHeight: 64,
+          endFrame: spriteKey.includes('spinning') ? 7 : 3
+        });
+      }
+    });
   }
 
   create() {
@@ -195,197 +187,82 @@ export class PackScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    // Hero animations - 4x1 sprite sheets
-    if (!this.anims.exists('hero-default-anim')) {
-      this.anims.create({
-        key: 'hero-default-anim',
-        frames: this.anims.generateFrameNumbers('hero-default', { start: 0, end: 3 }),
-        frameRate: 8,
-        repeat: -1
+    const characterManager = CharacterManager.getInstance();
+    
+    if (characterManager.isCharactersLoaded()) {
+      const spriteSets = characterManager.getUniqueSpriteSets();
+      
+      spriteSets.forEach(spriteSet => {
+        // Create animations for each sprite type
+        const spriteTypes = ['default', 'battle-left', 'battle-right', 'spinning'];
+        
+        spriteTypes.forEach(type => {
+          const animKey = `${spriteSet}-${type}-anim`;
+          const spriteKey = `${spriteSet}-${type}`;
+          
+          if (!this.anims.exists(animKey) && this.textures.exists(spriteKey)) {
+            const frameCount = type === 'spinning' ? 8 : 4;
+            const frameRate = type === 'spinning' ? 12 : (type.includes('battle') ? 6 : 8);
+            
+            this.anims.create({
+              key: animKey,
+              frames: this.anims.generateFrameNumbers(spriteKey, { start: 0, end: frameCount - 1 }),
+              frameRate: frameRate,
+              repeat: -1
+            });
+          }
+        });
       });
-    }
-
-    if (!this.anims.exists('hero-battle-left-anim')) {
-      this.anims.create({
-        key: 'hero-battle-left-anim',
-        frames: this.anims.generateFrameNumbers('hero-battle-left', { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1
-      });
-    }
-
-    if (!this.anims.exists('hero-battle-right-anim')) {
-      this.anims.create({
-        key: 'hero-battle-right-anim',
-        frames: this.anims.generateFrameNumbers('hero-battle-right', { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1
-      });
-    }
-
-    // Hero spinning animation - 4x2 sprite sheet
-    if (!this.anims.exists('hero-spinning-anim')) {
-      this.anims.create({
-        key: 'hero-spinning-anim',
-        frames: this.anims.generateFrameNumbers('hero-spinning', { start: 0, end: 7 }),
-        frameRate: 12,
-        repeat: -1
-      });
-    }
-
-    // Monster animations - 4x1 sprite sheets
-    if (!this.anims.exists('monster-default-anim')) {
-      this.anims.create({
-        key: 'monster-default-anim',
-        frames: this.anims.generateFrameNumbers('monster-default', { start: 0, end: 3 }),
-        frameRate: 8,
-        repeat: -1
-      });
-    }
-
-    if (!this.anims.exists('monster-battle-left-anim')) {
-      this.anims.create({
-        key: 'monster-battle-left-anim',
-        frames: this.anims.generateFrameNumbers('monster-battle-left', { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1
-      });
-    }
-
-    if (!this.anims.exists('monster-battle-right-anim')) {
-      this.anims.create({
-        key: 'monster-battle-right-anim',
-        frames: this.anims.generateFrameNumbers('monster-battle-right', { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1
-      });
-    }
-
-    // Monster spinning animation - 4x2 sprite sheet
-    if (!this.anims.exists('monster-spinning-anim')) {
-      this.anims.create({
-        key: 'monster-spinning-anim',
-        frames: this.anims.generateFrameNumbers('monster-spinning', { start: 0, end: 7 }),
-        frameRate: 12,
-        repeat: -1
-      });
+    } else {
+      // Fallback animations
+      this.createFallbackAnimations();
     }
   }
 
-  private createItems() {
-    // Updated character definitions with sprite objects
-    const characters: any[] = [
-      { 
-        name: 'Hero 1', 
-        rarity: 'common', 
-        sprites: {
-          default: 'hero-default',
-          spinning: 'hero-spinning',
-          battleLeft: 'hero-battle-left',
-          battleRight: 'hero-battle-right'
-        }
-      },
-      { 
-        name: 'Hero 2', 
-        rarity: 'rare', 
-        sprites: {
-          default: 'hero-default',
-          spinning: 'hero-spinning',
-          battleLeft: 'hero-battle-left',
-          battleRight: 'hero-battle-right'
-        }
-      },
-      { 
-        name: 'Hero 3', 
-        rarity: 'epic', 
-        sprites: {
-          default: 'hero-default',
-          spinning: 'hero-spinning',
-          battleLeft: 'hero-battle-left',
-          battleRight: 'hero-battle-right'
-        }
-      },
-      { 
-        name: 'Hero 4', 
-        rarity: 'legendary', 
-        sprites: {
-          default: 'hero-default',
-          spinning: 'hero-spinning',
-          battleLeft: 'hero-battle-left',
-          battleRight: 'hero-battle-right'
-        }
-      },
-      { 
-        name: 'Monster 1', 
-        rarity: 'common', 
-        sprites: {
-          default: 'monster-default',
-          spinning: 'monster-spinning',
-          battleLeft: 'monster-battle-left',
-          battleRight: 'monster-battle-right'
-        }
-      },
-      { 
-        name: 'Monster 2', 
-        rarity: 'rare', 
-        sprites: {
-          default: 'monster-default',
-          spinning: 'monster-spinning',
-          battleLeft: 'monster-battle-left',
-          battleRight: 'monster-battle-right'
-        }
-      },
-      { 
-        name: 'Monster 3', 
-        rarity: 'epic', 
-        sprites: {
-          default: 'monster-default',
-          spinning: 'monster-spinning',
-          battleLeft: 'monster-battle-left',
-          battleRight: 'monster-battle-right'
-        }
-      },
-      { 
-        name: 'Monster 4', 
-        rarity: 'legendary', 
-        sprites: {
-          default: 'monster-default',
-          spinning: 'monster-spinning',
-          battleLeft: 'monster-battle-left',
-          battleRight: 'monster-battle-right'
-        }
-      },
+  private createFallbackAnimations() {
+    // Create fallback animations for hero and monster
+    const fallbackAnims = [
+      { key: 'hero-default-anim', sprite: 'hero-default', frames: 4, rate: 8 },
+      { key: 'hero-spinning-anim', sprite: 'hero-spinning', frames: 8, rate: 12 },
+      { key: 'hero-battle-left-anim', sprite: 'hero-battle-left', frames: 4, rate: 6 },
+      { key: 'hero-battle-right-anim', sprite: 'hero-battle-right', frames: 4, rate: 6 },
+      { key: 'monster-default-anim', sprite: 'monster-default', frames: 4, rate: 8 },
+      { key: 'monster-spinning-anim', sprite: 'monster-spinning', frames: 8, rate: 12 },
+      { key: 'monster-battle-left-anim', sprite: 'monster-battle-left', frames: 4, rate: 6 },
+      { key: 'monster-battle-right-anim', sprite: 'monster-battle-right', frames: 4, rate: 6 }
     ];
 
-    // Create 20 items with randomized characters
+    fallbackAnims.forEach(anim => {
+      if (!this.anims.exists(anim.key)) {
+        this.anims.create({
+          key: anim.key,
+          frames: this.anims.generateFrameNumbers(anim.sprite, { start: 0, end: anim.frames - 1 }),
+          frameRate: anim.rate,
+          repeat: -1
+        });
+      }
+    });
+  }
+
+  private createItems() {
+    const characterManager = CharacterManager.getInstance();
+    
+    if (!characterManager.isCharactersLoaded()) {
+      console.error('Characters not loaded yet');
+      return;
+    }
+
+    // Create 20 items with randomized characters from the database
     for (let i = 0; i < 20; i++) {
-      // Randomize character selection with rarity weights
-      const randomChar = this.getRandomCharacter(characters);
+      const randomChar = characterManager.getRandomCharacter();
       const container = this.createItemContainer(randomChar, i * 100 + 600);
       this.items.push(container);
     }
   }
 
   private getRandomCharacter(characters: any[]): any {
-    // Define rarity weights (lower = rarer)
-    const rarityWeights: { [key: string]: number } = {
-      'legendary': 5,
-      'epic': 15,
-      'rare': 30,
-      'common': 50
-    };
-
-    // Create weighted array
-    const weightedChars: any[] = [];
-    characters.forEach(char => {
-      const weight = rarityWeights[char.rarity] || 50; // Default to common weight
-      for (let i = 0; i < weight; i++) {
-        weightedChars.push(char);
-      }
-    });
-
-    // Return random character based on weights
-    return weightedChars[Math.floor(Math.random() * weightedChars.length)];
+    // This method is now handled by CharacterManager
+    return CharacterManager.getInstance().getRandomCharacter();
   }
 
   private createItemContainer(char: any, x: number): Phaser.GameObjects.Container {

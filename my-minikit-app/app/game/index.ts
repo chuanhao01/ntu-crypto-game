@@ -1,5 +1,7 @@
 export { Game } from './PhaserGame';
 export { GameState } from './GameState';
+export { GameManager } from './GameManager';
+export { CharacterManager } from './CharacterManager';
 export { HomeScene } from './HomeScene';
 export { PackScene } from './PackScene';
 export { CollectionScene } from './CollectionScene';

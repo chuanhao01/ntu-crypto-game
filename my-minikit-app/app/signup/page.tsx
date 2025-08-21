@@ -1,98 +1,139 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@components/DemoComponents";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { redirect, RedirectType} from 'next/navigation'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Link } from "@components/Link";
+import { redirect, RedirectType } from "next/navigation";
 
-const formSchema = z
-  .object({
-    username: z.string().min(4, {
-      message: "Username must be at least 4 characters.",
-    }),
-    password: z
-      .string()
-      .min(4, { message: "Password must be at least 4 characters." }),
-  })
-  .required();
+export default function Signup() {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-export default function Login() {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-  });
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
+    if (password !== confirmPassword) {
+      alert("Passwords don't match!");
+      return;
+    }
+
+    setIsLoading(true);
+
     // console.log(values);
     // console.log(`${process.env.NEXT_PUBLIC_BACKEND_URL}/account`);
     fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/account`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: JSON.stringify({ username: username, password: password }),
       headers: {
         "Content-Type": "application/json",
       },
     }).then(async (res) => {
+      setIsLoading(false);
       if (!res.ok){
         console.log("Create account failed");
+        alert("Account creation failed. Please try again.");
+        return;
       }
-      await redirect("/", RedirectType.push)
+      console.log("Account created successfully");
+      // Use window.location for redirect instead of Next.js redirect in client component
+      window.location.href = "/";
     }).catch((e) => {
+      setIsLoading(false);
       console.log("Create account failed with error");
       console.error(e);
+      alert("Network error. Please try again.");
     });
-  }
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <Card title="Sign Up">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* TODO: Add validation on the unique username on the backend */}
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Username" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    This is your public display name.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+    <div className="space-y-6 animate-fade-in max-w-md mx-auto p-4">
+      <Card title="Join Crypto Battler">
+        <form onSubmit={handleSignup} className="space-y-4">
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-[var(--app-foreground)] mb-2"
+            >
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-[var(--app-border)] rounded-md bg-[var(--app-background)] text-[var(--app-foreground)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Choose a username"
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Password" {...field} type="password" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-[var(--app-foreground)] mb-2"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-[var(--app-border)] rounded-md bg-[var(--app-background)] text-[var(--app-foreground)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Create a password"
             />
-            <Button type="submit">Submit</Button>
-          </form>
-        </Form>
+          </div>
+
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-[var(--app-foreground)] mb-2"
+            >
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-[var(--app-border)] rounded-md bg-[var(--app-background)] text-[var(--app-foreground)] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Confirm your password"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium py-2 px-4 rounded-md transition-colors"
+          >
+            {isLoading ? "Creating account..." : "Create Account"}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-[var(--app-foreground-muted)] text-sm">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              variant="primary"
+            >
+              Sign in here
+            </Link>
+          </p>
+        </div>
+
+        <div className="mt-4 text-center">
+          <Link
+            href="/"
+            variant="ghost"
+          >
+            ← Back to Game
+          </Link>
+        </div>
       </Card>
     </div>
   );
