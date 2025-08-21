@@ -15,6 +15,16 @@ def init_db():
                 salt TEXT NOT NULL
             )
         ''')
+
+        # Positive for adding and negative for withdraw
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amount INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        ''')
         conn.commit()
 
 

@@ -3,11 +3,8 @@ from typing import Union
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-
-class CreateAccount(BaseModel):
-    username: str
-    password: str
+from db import create_user, User
+from crypto import hash_password
 
 
 
@@ -29,10 +26,16 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
+class CreateAccount(BaseModel):
+    username: str
+    password: str
+
+
 
 @app.post("/account")
 def read_item(create_account: CreateAccount):
-    return {
-        "username": create_account.username,
-        "password": create_account.password,
-    }
+    hashed_password = hash_password(create_account.password)
+    user = User(create_account.username, hashed_password)
+    # create_user(user)
+    print(user)
+    return ""

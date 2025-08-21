@@ -4,6 +4,7 @@ import { Card } from "@components/DemoComponents";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { redirect, RedirectType} from 'next/navigation'
 import {
   Form,
   FormControl,
@@ -34,8 +35,8 @@ export default function Login() {
 
   // 2. Define a submit handler.
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    console.log(`${process.env.NEXT_PUBLIC_BACKEND_URL}/account`);
+    // console.log(values);
+    // console.log(`${process.env.NEXT_PUBLIC_BACKEND_URL}/account`);
     fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/account`, {
       method: "POST",
       body: JSON.stringify(values),
@@ -46,7 +47,7 @@ export default function Login() {
       if (!res.ok){
         console.log("Create account failed");
       }
-      console.log(await res.json());
+      await redirect("/", RedirectType.push)
     }).catch((e) => {
       console.log("Create account failed with error");
       console.error(e);
