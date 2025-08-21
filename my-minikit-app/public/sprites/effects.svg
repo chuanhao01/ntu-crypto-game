@@ -1,0 +1,8 @@
+<svg width="192" height="64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Slash effect (64x64) -->
+  <line x1="12" y1="12" x2="52" y2="52" stroke="#a0aec0" stroke-width="4"/>
+  <!-- Magic effect (64x64) -->
+  <circle cx="96" cy="32" r="20" fill="#805ad5" opacity="0.6"/>
+  <!-- Punch effect (64x64) -->
+  <circle cx="160" cy="32" r="16" fill="#ed8936"/>
+</svg>
