@@ -10,6 +10,7 @@ import { MarketplaceScene } from '../game/MarketplaceScene';
 import { GameManager } from '../game/GameManager';
 import { Card } from './DemoComponents';
 import { Link } from './Link';
+import { CombinerScene } from '../game/CombinerScene';
 
 export function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -36,7 +37,7 @@ export function Game() {
           height: 662,
           parent: containerRef.current!,
           backgroundColor: '#2D3748',
-          scene: [HomeScene, BattleScene, PackScene, CollectionScene, MarketplaceScene],
+          scene: [HomeScene, BattleScene, PackScene, CollectionScene, MarketplaceScene, CombinerScene],
           scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH

@@ -2,7 +2,7 @@ export interface Character {
   id: number;
   name: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  character_type: 'hero' | 'monster';
+  character_type: 'hero' | 'monster' | 'mage' | 'archer' | 'assassin' | 'tank' | 'healer' | 'demon' | 'dragon' | 'undead' | 'beast' | 'elemental';
   sprites: {
     default: string;
     spinning: string;
@@ -40,10 +40,7 @@ export class CharacterManager {
       
       if (response.ok) {
         const data = await response.json();
-        this.characters = data.characters.map((char: any) => ({
-          ...char,
-          moves: this.generateMovesForCharacter(char)
-        }));
+        this.characters = data.characters;
         
         this.isLoaded = true;
         console.log(`Loaded ${this.characters.length} characters from server`);
@@ -125,35 +122,6 @@ export class CharacterManager {
     return sprites;
   }
 
-  private generateMovesForCharacter(character: Character): Array<{ name: string; damage: number; description: string }> {
-    const isHero = character.character_type === 'hero';
-    const rarity = character.rarity;
-    
-    if (isHero) {
-      const heroMoves = [
-        { name: 'Slash', damage: 15, description: 'A quick sword strike' },
-        { name: 'Holy Light', damage: 18, description: 'Divine magic attack' }
-      ];
-      
-      if (rarity === 'legendary' || rarity === 'epic') {
-        heroMoves.push({ name: 'Divine Wrath', damage: 25, description: 'Powerful ultimate ability' });
-      }
-      
-      return heroMoves;
-    } else {
-      const monsterMoves = [
-        { name: 'Claw', damage: 14, description: 'Sharp claw attack' },
-        { name: 'Bite', damage: 16, description: 'Vicious bite' }
-      ];
-      
-      if (rarity === 'legendary' || rarity === 'epic') {
-        monsterMoves.push({ name: 'Rampage', damage: 24, description: 'Devastating berserker attack' });
-      }
-      
-      return monsterMoves;
-    }
-  }
-
   private loadDefaultCharacters(): void {
     console.log('Loading default characters as fallback');
     // Fallback characters if server is unavailable
@@ -170,10 +138,10 @@ export class CharacterManager {
           battleRight: 'hero-battle-right'
         },
         stats: { hp: 90, attack: 12, defense: 10 },
-        moves: this.generateMovesForCharacter({
-          character_type: 'hero',
-          rarity: 'common'
-        } as Character)
+        moves: [
+          { name: 'Slash', damage: 15, description: 'A quick sword strike' },
+          { name: 'Shield Bash', damage: 12, description: 'Strike with shield' }
+        ]
       },
       {
         id: 2,
@@ -187,10 +155,10 @@ export class CharacterManager {
           battleRight: 'monster-battle-right'
         },
         stats: { hp: 75, attack: 15, defense: 6 },
-        moves: this.generateMovesForCharacter({
-          character_type: 'monster',
-          rarity: 'common'
-        } as Character)
+        moves: [
+          { name: 'Claw', damage: 14, description: 'Sharp claw attack' },
+          { name: 'Bite', damage: 16, description: 'Vicious bite' }
+        ]
       }
     ];
     this.isLoaded = true;
