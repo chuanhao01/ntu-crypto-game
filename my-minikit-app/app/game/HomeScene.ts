@@ -21,37 +21,51 @@ export class HomeScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    // Create buttons
+    // Menu buttons
     const buttonStyle = {
+      fontSize: '18px',
       color: '#ffffff',
       backgroundColor: '#4A5568',
-      padding: { x: 20, y: 10 },
-      fontSize: '20px'
+      padding: { x: 20, y: 15 }
     };
 
-    // Battle button
-    this.add.text(208, 180, 'Battle', buttonStyle)
-      .setInteractive()
-      .setOrigin(0.5)
-      .on('pointerdown', () => this.scene.start('BattleScene'));
+    const buttonSpacing = 70;
+    const startY = 280;
 
-    // Open Packs button
-    this.add.text(208, 230, 'Open Packs', buttonStyle)
-      .setInteractive()
-      .setOrigin(0.5)
-      .on('pointerdown', () => this.scene.start('PackScene'));
+    // Battle button (moved to first position)
+    const battleButton = this.add.text(208, startY, 'Battle', buttonStyle).setOrigin(0.5);
+    battleButton.setInteractive();
+    battleButton.on('pointerdown', () => {
+      this.scene.start('BattleScene');
+    });
 
-    // Collection button
-    this.add.text(208, 280, 'Collection', buttonStyle)
-      .setInteractive()
-      .setOrigin(0.5)
-      .on('pointerdown', () => this.scene.start('CollectionScene'));
+    // Open Pack button
+    const openPackButton = this.add.text(208, startY + buttonSpacing, 'Open Pack', buttonStyle).setOrigin(0.5);
+    openPackButton.setInteractive();
+    openPackButton.on('pointerdown', () => {
+      this.scene.start('PackScene');
+    });
+
+    // Collection button  
+    const collectionButton = this.add.text(208, startY + buttonSpacing * 2, 'Collection', buttonStyle).setOrigin(0.5);
+    collectionButton.setInteractive();
+    collectionButton.on('pointerdown', () => {
+      this.scene.start('CollectionScene');
+    });
+
+    // Combiner button
+    const combinerButton = this.add.text(208, startY + buttonSpacing * 3, 'Combiner', buttonStyle).setOrigin(0.5);
+    combinerButton.setInteractive();
+    combinerButton.on('pointerdown', () => {
+      this.scene.start('CombinerScene');
+    });
 
     // Marketplace button
-    this.add.text(208, 330, 'Marketplace', buttonStyle)
-      .setInteractive()
-      .setOrigin(0.5)
-      .on('pointerdown', () => this.scene.start('MarketplaceScene'));
+    const marketplaceButton = this.add.text(208, startY + buttonSpacing * 4, 'Marketplace', buttonStyle).setOrigin(0.5);
+    marketplaceButton.setInteractive();
+    marketplaceButton.on('pointerdown', () => {
+      this.scene.start('MarketplaceScene');
+    });
   }
 
   update() {

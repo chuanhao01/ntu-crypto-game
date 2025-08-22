@@ -158,19 +158,19 @@ class Character:
     id: int
     name: str
     rarity: str
-    character_type: str  # 'hero' or 'monster'
+    character_type: str  # Expanded types
     sprite_set: str
     base_hp: int
     base_attack: int
     base_defense: int
 
 def create_characters_table():
-    """Initialize the characters table with default characters"""
+    """Initialize the characters table with moves stored as JSON"""
     try:
         with sqlite3.connect(DB_FILE_PATH) as conn:
             cursor = conn.cursor()
             
-            # Create characters table
+            # Create characters table with moves as JSON
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS characters (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,40 +180,212 @@ def create_characters_table():
                     sprite_set TEXT NOT NULL,
                     base_hp INTEGER NOT NULL,
                     base_attack INTEGER NOT NULL,
-                    base_defense INTEGER NOT NULL
+                    base_defense INTEGER NOT NULL,
+                    moves TEXT NOT NULL DEFAULT '[]'
                 )
             ''')
             
             # Check if characters already exist
             cursor.execute('SELECT COUNT(*) FROM characters')
             if cursor.fetchone()[0] == 0:
-                # Insert default characters
+                # Insert diverse characters with different types and their moves as JSON
+                import json
+                
                 default_characters = [
                     # Heroes
-                    ('Knight Valor', 'common', 'hero', 'hero', 90, 12, 10),
-                    ('Paladin Light', 'rare', 'hero', 'hero', 110, 15, 12),
-                    ('Champion Divine', 'epic', 'hero', 'hero', 140, 20, 17),
-                    ('Legendary Guardian', 'legendary', 'hero', 'hero', 190, 28, 24),
-                    ('Warrior Brave', 'common', 'hero', 'hero', 85, 14, 8),
-                    ('Mage Arcane', 'rare', 'hero', 'hero', 105, 18, 9),
-                    ('Sorcerer Supreme', 'epic', 'hero', 'hero', 135, 25, 12),
-                    ('Archmagus Eternal', 'legendary', 'hero', 'hero', 180, 32, 20),
+                    ('Knight Valor', 'common', 'hero', 'hero', 90, 12, 10, 
+                     json.dumps([
+                         {'name': 'Slash', 'damage': 15, 'description': 'A quick sword strike'},
+                         {'name': 'Shield Bash', 'damage': 12, 'description': 'Strike with shield'},
+                         {'name': 'Heroic Strike', 'damage': 18, 'description': 'Powerful heroic attack'}
+                     ])),
+                    ('Paladin Light', 'rare', 'hero', 'hero', 110, 15, 12,
+                     json.dumps([
+                         {'name': 'Slash', 'damage': 18, 'description': 'A quick sword strike'},
+                         {'name': 'Shield Bash', 'damage': 15, 'description': 'Strike with shield'},
+                         {'name': 'Heroic Strike', 'damage': 22, 'description': 'Powerful heroic attack'}
+                     ])),
+                    ('Champion Divine', 'epic', 'hero', 'hero', 140, 20, 17,
+                     json.dumps([
+                         {'name': 'Slash', 'damage': 22, 'description': 'A quick sword strike'},
+                         {'name': 'Shield Bash', 'damage': 18, 'description': 'Strike with shield'},
+                         {'name': 'Heroic Strike', 'damage': 28, 'description': 'Powerful heroic attack'}
+                     ])),
+                    ('Legendary Guardian', 'legendary', 'hero', 'hero', 190, 28, 24,
+                     json.dumps([
+                         {'name': 'Slash', 'damage': 30, 'description': 'A quick sword strike'},
+                         {'name': 'Shield Bash', 'damage': 25, 'description': 'Strike with shield'},
+                         {'name': 'Heroic Strike', 'damage': 35, 'description': 'Powerful heroic attack'}
+                     ])),
                     
-                    # Monsters
-                    ('Shadow Beast', 'common', 'monster', 'monster', 75, 15, 6),
-                    ('Dark Fiend', 'rare', 'monster', 'monster', 95, 18, 8),
-                    ('Nightmare Demon', 'epic', 'monster', 'monster', 125, 23, 13),
-                    ('Ancient Dragon', 'legendary', 'monster', 'monster', 175, 31, 20),
-                    ('Goblin Striker', 'common', 'monster', 'monster', 70, 16, 5),
-                    ('Orc Berserker', 'rare', 'monster', 'monster', 90, 20, 7),
-                    ('Troll Warlord', 'epic', 'monster', 'monster', 120, 26, 11),
-                    ('Titan Destroyer', 'legendary', 'monster', 'monster', 170, 35, 18),
+                    # Mages
+                    ('Apprentice Mage', 'common', 'mage', 'mage', 70, 18, 8,
+                     json.dumps([
+                         {'name': 'Fireball', 'damage': 20, 'description': 'Launch a ball of fire'},
+                         {'name': 'Ice Shard', 'damage': 16, 'description': 'Sharp ice projectile'},
+                         {'name': 'Lightning Bolt', 'damage': 22, 'description': 'Electric attack'}
+                     ])),
+                    ('Fire Wizard', 'rare', 'mage', 'mage', 85, 22, 10,
+                     json.dumps([
+                         {'name': 'Fireball', 'damage': 25, 'description': 'Launch a ball of fire'},
+                         {'name': 'Ice Shard', 'damage': 20, 'description': 'Sharp ice projectile'},
+                         {'name': 'Lightning Bolt', 'damage': 28, 'description': 'Electric attack'}
+                     ])),
+                    ('Archmage', 'epic', 'mage', 'mage', 105, 28, 14,
+                     json.dumps([
+                         {'name': 'Fireball', 'damage': 32, 'description': 'Launch a ball of fire'},
+                         {'name': 'Ice Shard', 'damage': 26, 'description': 'Sharp ice projectile'},
+                         {'name': 'Lightning Bolt', 'damage': 35, 'description': 'Electric attack'}
+                     ])),
+                    ('Cosmic Sorcerer', 'legendary', 'mage', 'mage', 130, 35, 18,
+                     json.dumps([
+                         {'name': 'Fireball', 'damage': 40, 'description': 'Launch a ball of fire'},
+                         {'name': 'Ice Shard', 'damage': 32, 'description': 'Sharp ice projectile'},
+                         {'name': 'Lightning Bolt', 'damage': 45, 'description': 'Electric attack'}
+                     ])),
+                    
+                    # Archers
+                    ('Forest Ranger', 'common', 'archer', 'archer', 80, 16, 9,
+                     json.dumps([
+                         {'name': 'Precise Shot', 'damage': 18, 'description': 'Accurate arrow shot'},
+                         {'name': 'Multi-Shot', 'damage': 14, 'description': 'Fire multiple arrows'},
+                         {'name': 'Explosive Arrow', 'damage': 24, 'description': 'Arrow that explodes on impact'}
+                     ])),
+                    ('Eagle Eye', 'rare', 'archer', 'archer', 95, 20, 11,
+                     json.dumps([
+                         {'name': 'Precise Shot', 'damage': 22, 'description': 'Accurate arrow shot'},
+                         {'name': 'Multi-Shot', 'damage': 18, 'description': 'Fire multiple arrows'},
+                         {'name': 'Explosive Arrow', 'damage': 28, 'description': 'Arrow that explodes on impact'}
+                     ])),
+                    ('Master Archer', 'epic', 'archer', 'archer', 115, 26, 15,
+                     json.dumps([
+                         {'name': 'Precise Shot', 'damage': 28, 'description': 'Accurate arrow shot'},
+                         {'name': 'Multi-Shot', 'damage': 22, 'description': 'Fire multiple arrows'},
+                         {'name': 'Explosive Arrow', 'damage': 35, 'description': 'Arrow that explodes on impact'}
+                     ])),
+                    ('Legendary Marksman', 'legendary', 'archer', 'archer', 140, 32, 19,
+                     json.dumps([
+                         {'name': 'Precise Shot', 'damage': 35, 'description': 'Accurate arrow shot'},
+                         {'name': 'Multi-Shot', 'damage': 28, 'description': 'Fire multiple arrows'},
+                         {'name': 'Explosive Arrow', 'damage': 42, 'description': 'Arrow that explodes on impact'}
+                     ])),
+                    
+                    # Assassins
+                    ('Shadow Blade', 'common', 'assassin', 'assassin', 75, 20, 6,
+                     json.dumps([
+                         {'name': 'Backstab', 'damage': 25, 'description': 'Critical strike from behind'},
+                         {'name': 'Poison Blade', 'damage': 16, 'description': 'Venomous attack'},
+                         {'name': 'Shadow Strike', 'damage': 20, 'description': 'Attack from the shadows'}
+                     ])),
+                    ('Night Stalker', 'rare', 'assassin', 'assassin', 90, 25, 8,
+                     json.dumps([
+                         {'name': 'Backstab', 'damage': 30, 'description': 'Critical strike from behind'},
+                         {'name': 'Poison Blade', 'damage': 20, 'description': 'Venomous attack'},
+                         {'name': 'Shadow Strike', 'damage': 25, 'description': 'Attack from the shadows'}
+                     ])),
+                    ('Death\'s Shadow', 'epic', 'assassin', 'assassin', 110, 32, 12,
+                     json.dumps([
+                         {'name': 'Backstab', 'damage': 38, 'description': 'Critical strike from behind'},
+                         {'name': 'Poison Blade', 'damage': 26, 'description': 'Venomous attack'},
+                         {'name': 'Shadow Strike', 'damage': 32, 'description': 'Attack from the shadows'}
+                     ])),
+                    ('Phantom Assassin', 'legendary', 'assassin', 'assassin', 135, 40, 16,
+                     json.dumps([
+                         {'name': 'Backstab', 'damage': 48, 'description': 'Critical strike from behind'},
+                         {'name': 'Poison Blade', 'damage': 32, 'description': 'Venomous attack'},
+                         {'name': 'Shadow Strike', 'damage': 40, 'description': 'Attack from the shadows'}
+                     ])),
+                    
+                    # Tanks
+                    ('Iron Wall', 'common', 'tank', 'tank', 120, 10, 15,
+                     json.dumps([
+                         {'name': 'Shield Slam', 'damage': 10, 'description': 'Defensive counter-attack'},
+                         {'name': 'Taunt', 'damage': 8, 'description': 'Provoke enemy'},
+                         {'name': 'Fortress Wall', 'damage': 12, 'description': 'Protective barrier attack'}
+                     ])),
+                    ('Steel Guardian', 'rare', 'tank', 'tank', 140, 12, 18,
+                     json.dumps([
+                         {'name': 'Shield Slam', 'damage': 14, 'description': 'Defensive counter-attack'},
+                         {'name': 'Taunt', 'damage': 10, 'description': 'Provoke enemy'},
+                         {'name': 'Fortress Wall', 'damage': 16, 'description': 'Protective barrier attack'}
+                     ])),
+                    ('Fortress Defender', 'epic', 'tank', 'tank', 170, 16, 25,
+                     json.dumps([
+                         {'name': 'Shield Slam', 'damage': 18, 'description': 'Defensive counter-attack'},
+                         {'name': 'Taunt', 'damage': 14, 'description': 'Provoke enemy'},
+                         {'name': 'Fortress Wall', 'damage': 22, 'description': 'Protective barrier attack'}
+                     ])),
+                    ('Immortal Bulwark', 'legendary', 'tank', 'tank', 220, 20, 32,
+                     json.dumps([
+                         {'name': 'Shield Slam', 'damage': 24, 'description': 'Defensive counter-attack'},
+                         {'name': 'Taunt', 'damage': 18, 'description': 'Provoke enemy'},
+                         {'name': 'Fortress Wall', 'damage': 28, 'description': 'Protective barrier attack'}
+                     ])),
+                    
+                    # Healers
+                    ('Village Priest', 'common', 'healer', 'healer', 85, 8, 12,
+                     json.dumps([
+                         {'name': 'Holy Light', 'damage': 14, 'description': 'Divine healing energy as attack'},
+                         {'name': 'Purify', 'damage': 12, 'description': 'Cleansing light attack'},
+                         {'name': 'Divine Wrath', 'damage': 18, 'description': 'Righteous anger'}
+                     ])),
+                    ('Temple Cleric', 'rare', 'healer', 'healer', 100, 10, 15,
+                     json.dumps([
+                         {'name': 'Holy Light', 'damage': 18, 'description': 'Divine healing energy as attack'},
+                         {'name': 'Purify', 'damage': 15, 'description': 'Cleansing light attack'},
+                         {'name': 'Divine Wrath', 'damage': 22, 'description': 'Righteous anger'}
+                     ])),
+                    ('High Priest', 'epic', 'healer', 'healer', 125, 14, 20,
+                     json.dumps([
+                         {'name': 'Holy Light', 'damage': 24, 'description': 'Divine healing energy as attack'},
+                         {'name': 'Purify', 'damage': 20, 'description': 'Cleansing light attack'},
+                         {'name': 'Divine Wrath', 'damage': 28, 'description': 'Righteous anger'}
+                     ])),
+                    ('Divine Oracle', 'legendary', 'healer', 'healer', 160, 18, 26,
+                     json.dumps([
+                         {'name': 'Holy Light', 'damage': 30, 'description': 'Divine healing energy as attack'},
+                         {'name': 'Purify', 'damage': 25, 'description': 'Cleansing light attack'},
+                         {'name': 'Divine Wrath', 'damage': 35, 'description': 'Righteous anger'}
+                     ])),
                 ]
                 
+                # Add remaining character types with similar pattern...
+                remaining_characters = [
+                    # Monsters
+                    ('Shadow Beast', 'common', 'monster', 'monster', 75, 15, 6,
+                     json.dumps([
+                         {'name': 'Claw', 'damage': 14, 'description': 'Sharp claw attack'},
+                         {'name': 'Bite', 'damage': 16, 'description': 'Vicious bite'},
+                         {'name': 'Dark Energy', 'damage': 20, 'description': 'Malevolent force'}
+                     ])),
+                    ('Dark Fiend', 'rare', 'monster', 'monster', 95, 18, 8,
+                     json.dumps([
+                         {'name': 'Claw', 'damage': 18, 'description': 'Sharp claw attack'},
+                         {'name': 'Bite', 'damage': 20, 'description': 'Vicious bite'},
+                         {'name': 'Dark Energy', 'damage': 24, 'description': 'Malevolent force'}
+                     ])),
+                    ('Nightmare Demon', 'epic', 'monster', 'monster', 125, 23, 13,
+                     json.dumps([
+                         {'name': 'Claw', 'damage': 24, 'description': 'Sharp claw attack'},
+                         {'name': 'Bite', 'damage': 26, 'description': 'Vicious bite'},
+                         {'name': 'Dark Energy', 'damage': 30, 'description': 'Malevolent force'}
+                     ])),
+                    
+                    # Add other character types with JSON moves...
+                    ('Ancient Dragon', 'legendary', 'dragon', 'dragon', 220, 38, 25,
+                     json.dumps([
+                         {'name': 'Dragon Breath', 'damage': 45, 'description': 'Powerful breath weapon'},
+                         {'name': 'Tail Sweep', 'damage': 35, 'description': 'Sweeping tail attack'},
+                         {'name': 'Wing Buffet', 'damage': 30, 'description': 'Powerful wing strike'}
+                     ])),
+                ]
+                
+                all_characters = default_characters + remaining_characters
+                
                 cursor.executemany('''
-                    INSERT INTO characters (name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', default_characters)
+                    INSERT INTO characters (name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense, moves)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', all_characters)
                 
             conn.commit()
             return True
@@ -222,14 +394,14 @@ def create_characters_table():
         print(f"Database error in create_characters_table: {e}")
         return False
 
-def get_all_characters() -> list[Character]:
-    """Get all available characters from the database"""
+def get_all_characters() -> list[dict]:
+    """Get all available characters from the database with moves parsed from JSON"""
     try:
         with sqlite3.connect(DB_FILE_PATH) as conn:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT id, name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense 
+                SELECT id, name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense, moves
                 FROM characters
             ''')
             
@@ -237,16 +409,20 @@ def get_all_characters() -> list[Character]:
             characters = []
             
             for row in rows:
-                character = Character(
-                    id=row[0],
-                    name=row[1],
-                    rarity=row[2],
-                    character_type=row[3],
-                    sprite_set=row[4],
-                    base_hp=row[5],
-                    base_attack=row[6],
-                    base_defense=row[7]
-                )
+                import json
+                moves = json.loads(row[8]) if row[8] else []
+                
+                character = {
+                    "id": row[0],
+                    "name": row[1],
+                    "rarity": row[2],
+                    "character_type": row[3],
+                    "sprite_set": row[4],
+                    "base_hp": row[5],
+                    "base_attack": row[6],
+                    "base_defense": row[7],
+                    "moves": moves
+                }
                 characters.append(character)
                 
             return characters
