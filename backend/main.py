@@ -16,7 +16,8 @@ from src.db import (
     get_all_characters,
     get_user_id_from_username,
     create_transaction,
-    Transaction
+    Transaction,
+    add_money
 )
 from src.crypto import hash_password, verify_password
 
@@ -199,13 +200,14 @@ def payment_callback(user_deposit: UserDeposit):
     user_id = get_user_id_from_username(user_deposit.username)
     if user_id is None:
         raise HTTPException(status_code=500, detail="Failed to find user")
-    create_transaction(Transaction(user_id, user_deposit.amount))
+    # create_transaction(Transaction(user_id, user_deposit.amount))
+    add_money(user_deposit.amount, user_id)
     return ""
 
 class UserModel(BaseModel):
     username: str
 
-@app.get("/user/balance")
+@app.post("/user/balance")
 def get_balance(user: UserModel):
     user_id = get_user_id_from_username(user.username)
     if user_id is None:

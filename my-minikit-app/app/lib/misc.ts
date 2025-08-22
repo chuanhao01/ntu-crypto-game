@@ -9,7 +9,7 @@ export async function getUserBalance(username: string): Promise<number> {
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_BACKEND_URL}/user/balance`,
     {
-      method: "GET",
+      method: "POST",
       body: JSON.stringify({
         username: username,
       }),

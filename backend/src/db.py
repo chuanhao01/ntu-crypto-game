@@ -299,3 +299,20 @@ def get_all_characters() -> list[Character]:
     except Exception as e:
         print(f"Database error in get_all_characters: {e}")
         return []
+
+
+def add_money(amount: int, user_id: int):
+    try:
+        with sqlite3.connect(DB_FILE_PATH) as conn:
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                UPDATE game_saves
+                SET gold = gold + ?
+                WHERE user_id = ?
+            ''', (amount / 100, user_id))
+            conn.commit()
+        return
+    except Exception as e:
+        print(f"Database error in load_user_game_data: {e}")
+        return None

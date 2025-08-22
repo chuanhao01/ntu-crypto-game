@@ -5,13 +5,13 @@ import { Card } from "./components/DemoComponents";
 import { Link } from "./components/Link";
 import { Game } from "./components/Game";
 import { GameManager } from "./game/GameManager";
-import { getUserBalance } from "./lib/misc";
+// import { getUserBalance } from "./lib/misc";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
 
-  const [userBalance, setUserBalance] = useState(null);
+  // const [userBalance, setUserBalance] = useState(null);
 
   useEffect(() => {
     const gameManager = GameManager.getInstance();
@@ -22,9 +22,10 @@ export default function App() {
       const storedUsername = localStorage.getItem("username");
       setUsername(storedUsername || "Player");
 
-      getUserBalance(storedUsername).then((balance) => {
-        setUserBalance(balance);
-      });
+      // console.log("we got username ", storedUsername);
+      // getUserBalance(storedUsername).then((balance) => {
+      //   setUserBalance(balance);
+      // });
       // Game loading is now handled by the Game component
     }
   }, []);
@@ -42,9 +43,9 @@ export default function App() {
               <p className="text-[var(--app-foreground)] text-sm">
                 Welcome back, {username}!
               </p>
-              {userBalance &&
+              {/* {userBalance &&
               <p>User Balance: {userBalance}</p>
-              }
+              } */}
 
               <div className="grid grid-cols-2 gap-x-2">
                 <Link href="/payment" variant="primary">
