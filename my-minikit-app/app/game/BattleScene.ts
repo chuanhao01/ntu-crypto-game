@@ -688,17 +688,43 @@ export class BattleScene extends Phaser.Scene {
       console.log(`Initialized ${character.name}: HP=${character.hp}/${character.maxHp}, Stats=`, character.stats);
     });
 
-    // Initialize enemy character
-    this.currentEnemyCharacter = {
-      name: 'Enemy Monster',
-      hp: 100,
-      maxHp: 100,
-      attack: 25,
-      defense: 8,
-      sprites: {
-        battleLeft: 'monster-battle-left'
-      }
-    };
+    // Initialize enemy character - try to find "Elepha" from CharacterManager
+    const characterManager = CharacterManager.getInstance();
+    const elephaCharacter = characterManager.getCharacters().find(char => 
+      char.name.toLowerCase() === 'elepha'
+    );
+
+    if (elephaCharacter) {
+      // Use Elepha as the enemy
+      this.currentEnemyCharacter = {
+        name: elephaCharacter.name,
+        hp: elephaCharacter.stats.hp,
+        maxHp: elephaCharacter.stats.hp,
+        attack: elephaCharacter.stats.attack,
+        defense: elephaCharacter.stats.defense,
+        sprites: {
+          battleLeft: elephaCharacter.sprites.battleLeft
+        },
+        moves: elephaCharacter.moves || [
+          { name: 'Trunk Slam', damage: 20, description: 'A powerful trunk attack' },
+          { name: 'Stomp', damage: 18, description: 'Crushes enemies underfoot' }
+        ]
+      };
+      console.log(`Initialized enemy: ${this.currentEnemyCharacter.name} with HP=${this.currentEnemyCharacter.hp}`);
+    } else {
+      // Fallback if Elepha is not found
+      console.warn('Elepha character not found, using default enemy');
+      this.currentEnemyCharacter = {
+        name: 'Enemy Monster',
+        hp: 100,
+        maxHp: 100,
+        attack: 25,
+        defense: 8,
+        sprites: {
+          battleLeft: 'monster-battle-left'
+        }
+      };
+    }
   }
 
   private createAnimations() {

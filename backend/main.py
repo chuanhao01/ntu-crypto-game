@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Any
 import jwt
 import datetime
 import ollama
@@ -10,7 +10,24 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from src.db import create_user, User, get_user_by_username, save_user_game_data, load_user_game_data, create_characters_table, get_all_characters, add_character_to_database, get_user_collection_character, update_user_collection_character, add_character_to_user_collection
+from src.db import (
+    get_user_balance,
+    create_user,
+    User,
+    get_user_by_username,
+    save_user_game_data,
+    load_user_game_data,
+    create_characters_table,
+    get_all_characters,
+    get_user_id_from_username,
+    create_transaction,
+    Transaction,
+    add_money,
+    add_character_to_database,
+    get_user_collection_character,
+    update_user_collection_character,
+    add_character_to_user_collection
+)
 from src.crypto import hash_password, verify_password
 
 # Load environment variables
@@ -43,6 +60,14 @@ if not pixellab_api_key:
     raise ValueError("PIXELLAB_API_KEY environment variable is not set")
 pixellab_client = pixellab.Client(secret=pixellab_api_key)
 
+# Add pixellab client initialization
+pixellab_api_key = os.getenv("PIXELLAB_API_KEY")
+print(f"Pixellab API key loaded: {pixellab_api_key}")
+if not pixellab_api_key:
+    raise ValueError("PIXELLAB_API_KEY environment variable is not set")
+pixellab_client = pixellab.Client(secret=pixellab_api_key)
+
+
 def init_model():
     try:
         print(f"Checking model: combiner")
@@ -54,15 +79,15 @@ def init_model():
             model='combiner',
             from_='llama3:8b',
             system="""
-SYSTEM: You are a character fusion AI. 
+SYSTEM: You are a character fusion AI.
 The character must have ONE rarity, chosen ONLY from this set:
 ["common", "rare", "epic", "legendary"].
 The character can only have a maximum of 4 abilities.
 
-USER: Fuse these two characters into one new unique character. 
+USER: Fuse these two characters into one new unique character.
 
-Character A: {name, rarity, type, stats, abilities} 
-Character B: {name, rarity, type, stats, abilities} 
+Character A: {name, rarity, type, stats, abilities}
+Character B: {name, rarity, type, stats, abilities}
 
 Respond ONLY in JSON:
 {
@@ -84,24 +109,30 @@ init_model()
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
+        )
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
 
 class CreateAccount(BaseModel):
     username: str
     password: str
 
+
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 
 class SaveGameData(BaseModel):
     gold: int
@@ -111,7 +142,6 @@ class SaveGameData(BaseModel):
 class CombineCharacters(BaseModel):
     character1_id: int
     character2_id: int
-
 
 @app.post("/account")
 def create_account(create_account: CreateAccount):
@@ -124,39 +154,38 @@ def create_account(create_account: CreateAccount):
     except Exception as e:
         raise HTTPException(status_code=400, detail="Username already exists")
 
+
 @app.post("/login")
 def login(login_request: LoginRequest):
     # Get user from database
     user = get_user_by_username(login_request.username)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    
+
     # Verify password
     if not verify_password(login_request.password, user.hashed_password):
         print("HEY")
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    
+
     # Generate JWT token
     payload = {
         "user_id": user.id,
         "username": user.username,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    
+
     return {
         "success": True,
         "token": token,
-        "user": {
-            "id": user.id,
-            "username": user.username
-        }
+        "user": {"id": user.id, "username": user.username},
     }
 
+
 @app.post("/save-game")
-def save_game(save_data: SaveGameData, user_data = Depends(verify_token)):
+def save_game(save_data: SaveGameData, user_data=Depends(verify_token)):
     user_id = user_data["user_id"]
-    
+
     try:
         success = save_user_game_data(user_id, save_data.dict())
         if success:
@@ -167,10 +196,11 @@ def save_game(save_data: SaveGameData, user_data = Depends(verify_token)):
         print(f"Save game error: {e}")
         raise HTTPException(status_code=500, detail="Failed to save game")
 
+
 @app.get("/load-game")
-def load_game(user_data = Depends(verify_token)):
+def load_game(user_data=Depends(verify_token)):
     user_id = user_data["user_id"]
-    
+
     try:
         game_data = load_user_game_data(user_id)
         if game_data:
@@ -180,22 +210,24 @@ def load_game(user_data = Depends(verify_token)):
             return {
                 "gold": 100,
                 "collection": [],
-                "playerTeam": [None, None, None, None, None]
+                "playerTeam": [None, None, None, None, None],
             }
     except Exception as e:
         print(f"Load game error: {e}")
         raise HTTPException(status_code=500, detail="Failed to load game")
+
 
 # Initialize characters table on startup
 @app.on_event("startup")
 async def startup_event():
     create_characters_table()
 
+
 @app.get("/characters")
 def get_characters():
     """Get all available characters with their moves from JSON"""
     characters = get_all_characters()
-    
+
     # Convert to format expected by frontend
     character_data = []
     for char in characters:
@@ -206,7 +238,7 @@ def get_characters():
             "character_type": char["character_type"],
             "sprites": {
                 "default": f"{char['sprite_set']}-default",
-                "spinning": f"{char['sprite_set']}-spinning", 
+                "spinning": f"{char['sprite_set']}-spinning",
                 "battleLeft": f"{char['sprite_set']}-battle-left",
                 "battleRight": f"{char['sprite_set']}-battle-right"
             },
@@ -217,7 +249,7 @@ def get_characters():
             },
             "moves": char["moves"]
         })
-    
+
     return {"characters": character_data}
 
 def create_character_spritesheets(character_description, character_name):
@@ -291,7 +323,7 @@ def combine_characters(combine_data: CombineCharacters, user_data = Depends(veri
         characters = get_all_characters()
         char1 = next((c for c in characters if c["id"] == combine_data.character1_id), None)
         char2 = next((c for c in characters if c["id"] == combine_data.character2_id), None)
-        
+
         if not char1 or not char2:
             raise HTTPException(status_code=404, detail="One or both characters not found")
         
@@ -314,7 +346,7 @@ def combine_characters(combine_data: CombineCharacters, user_data = Depends(veri
         # Format characters for the AI prompt
         char1_prompt = f"{{name: '{char1['name']}', rarity: '{char1['rarity']}', type: '{char1['character_type']}', stats: {{hp: {char1['base_hp']}, attack: {char1['base_attack']}, defense: {char1['base_defense']}}}, abilities: {char1['moves']}}}"
         char2_prompt = f"{{name: '{char2['name']}', rarity: '{char2['rarity']}', type: '{char2['character_type']}', stats: {{hp: {char2['base_hp']}, attack: {char2['base_attack']}, defense: {char2['base_defense']}}}, abilities: {char2['moves']}}}"
-        
+
         # Create the fusion prompt
         fusion_prompt = f"""Fuse these two characters into one new unique character.
 
@@ -331,17 +363,17 @@ Respond ONLY in JSON format."""
             prompt=fusion_prompt,
             stream=False
         )
-        
+
         # Parse the AI response
         import json
         try:
             fused_character = json.loads(response['response'])
-            
+
             # Validate the response has required fields
             required_fields = ['name', 'rarity', 'description', 'stats', 'abilities']
             if not all(field in fused_character for field in required_fields):
                 raise ValueError("Missing required fields in AI response")
-            
+
             # Ensure rarity is valid
             valid_rarities = ['common', 'rare', 'epic', 'legendary']
             if fused_character['rarity'] not in valid_rarities:
@@ -450,12 +482,41 @@ Respond ONLY in JSON format."""
                 ],
                 "new_character_data": new_char_data  # Include for debugging
             }
-            
+
         except json.JSONDecodeError as e:
             print(f"Failed to parse AI response as JSON: {e}")
             print(f"AI Response: {response['response']}")
             raise HTTPException(status_code=500, detail="AI generated invalid response")
-            
+
     except Exception as e:
         print(f"Combine characters error: {e}")
         raise HTTPException(status_code=500, detail="Failed to combine characters")
+
+
+class UserDeposit(BaseModel):
+    username: str
+    amount: int
+    transaction_id: str
+
+
+@app.post("/user_deposit")
+def payment_callback(user_deposit: UserDeposit):
+    # TODO, verify and get value from transaction id
+    # print(user_deposit)
+    user_id = get_user_id_from_username(user_deposit.username)
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="Failed to find user")
+    # create_transaction(Transaction(user_id, user_deposit.amount))
+    add_money(user_deposit.amount, user_id)
+    return ""
+
+class UserModel(BaseModel):
+    username: str
+
+@app.post("/user/balance")
+def get_balance(user: UserModel):
+    user_id = get_user_id_from_username(user.username)
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="Failed to find user")
+    user_balance = get_user_balance(user_id)
+    return {"balance": user_balance}
