@@ -97,6 +97,9 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    // Professional background
+    this.createBackground();
+
     // Initialize character stats and setup battle
     this.initializeCharacterStats();
 
@@ -104,21 +107,8 @@ export class BattleScene extends Phaser.Scene {
     this.currentPlayerCharacter = this.playerTeam[0];
     this.playerCharacterIndex = 0;
 
-    // Add back button at top left
-    this.add.text(20, 20, 'Back', {
-      color: '#ffffff',
-      backgroundColor: '#4A5568',
-      padding: { x: 10, y: 5 },
-      fontSize: '16px'
-    })
-    .setInteractive()
-    .on('pointerdown', () => this.scene.start('HomeScene'));
-
-    // Gold display at top right
-    this.goldText = this.add.text(396, 20, `Gold: ${GameState.getInstance().getGold()}`, {
-      fontSize: '16px',
-      color: '#FFD700'
-    }).setOrigin(1, 0);
+    // Enhanced header section
+    this.createHeaderSection();
 
     // Add team indicators
     this.addTeamIndicators();
@@ -134,6 +124,81 @@ export class BattleScene extends Phaser.Scene {
     this.displayEnemyCharacter();
 
     this.updateUI();
+  }
+
+  private createBackground() {
+    // Professional battle background
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x2d1b69, 1);
+    graphics.fillRect(0, 0, 416, 662);
+
+    // Battle atmosphere effects
+    const battleEffects = this.add.graphics();
+    battleEffects.fillStyle(0xff4444, 0.1);
+    for (let i = 0; i < 15; i++) {
+      const x = Math.random() * 416;
+      const y = Math.random() * 400;
+      const size = Math.random() * 3 + 1;
+      battleEffects.fillCircle(x, y, size);
+    }
+
+    this.tweens.add({
+      targets: battleEffects,
+      alpha: 0.05,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private createHeaderSection() {
+    // Styled back button
+    const backButtonBg = this.add.graphics();
+    backButtonBg.fillStyle(0x4A5568, 0.9);
+    backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+    backButtonBg.lineStyle(2, 0xFF4444, 0.8);
+    backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+
+    const backButton = this.add.text(50, 27, '← Back', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
+    })
+    .setOrigin(0.5)
+    .setInteractive()
+    .on('pointerdown', () => this.scene.start('HomeScene'))
+    .on('pointerover', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0xFF4444, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0xFF4444, 1);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    })
+    .on('pointerout', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0x4A5568, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0xFF4444, 0.8);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    });
+
+    // Enhanced gold display
+    const goldFrame = this.add.graphics();
+    goldFrame.fillStyle(0x000000, 0.8);
+    goldFrame.fillRoundedRect(280, 15, 130, 30, 15);
+    goldFrame.lineStyle(2, 0xFFD700, 1);
+    goldFrame.strokeRoundedRect(280, 15, 130, 30, 15);
+
+    const goldIcon = this.add.text(295, 30, '💰', {
+      fontSize: '16px'
+    }).setOrigin(0, 0.5);
+
+    this.goldText = this.add.text(320, 30, `${GameState.getInstance().getGold()}`, {
+      fontSize: '14px',
+      color: '#FFD700',
+      fontFamily: 'Arial'
+    }).setOrigin(0, 0.5);
   }
 
   private createBattleUI() {
@@ -413,127 +478,98 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showMessage(text: string, color: string) {
-    const message = this.add.text(208, 50, text, {
-      fontSize: '14px',
+    // Enhanced battle message
+    const messageBg = this.add.graphics();
+    messageBg.fillStyle(0x000000, 0.9);
+    messageBg.fillRoundedRect(58, 40, 300, 30, 15);
+    messageBg.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 1);
+    messageBg.strokeRoundedRect(58, 40, 300, 30, 15);
+
+    const message = this.add.text(208, 55, text, {
+      fontSize: '12px',
       color: color,
-      backgroundColor: '#000000',
-      padding: { x: 10, y: 5 }
+      fontFamily: 'Arial'
     }).setOrigin(0.5);
 
-    // Fade out after 2 seconds
+    // Battle-style entrance
+    messageBg.setScale(0);
+    message.setScale(0);
+    
     this.tweens.add({
-      targets: message,
-      alpha: 0,
-      duration: 2000,
-      onComplete: () => message.destroy()
-    });
-  }
-
-  private showDamage(x: number, y: number, damage: number, color: string) {
-    const damageText = this.add.text(x, y, `-${damage}`, {
-      fontSize: '20px',
-      color: color
-    }).setOrigin(0.5);
-
-    this.tweens.add({
-      targets: damageText,
-      y: y - 50,
-      alpha: 0,
-      duration: 1000,
-      onComplete: () => damageText.destroy()
-    });
-  }
-
-  private endBattle(victory: boolean) {
-    this.battlePhase = 'battle-end';
-    
-    // Create overlay background
-    const overlay = this.add.rectangle(208, 300, 416, 600, 0x000000)
-      .setAlpha(0)
-      .setDepth(100);
-    
-    // Create popup container
-    const popup = this.add.container(208, 300)
-      .setDepth(101)
-      .setScale(0.1)
-      .setAlpha(0);
-    
-    // Popup background
-    const popupBg = this.add.rectangle(0, 0, 350, 250, 0x2D3748)
-      .setStrokeStyle(4, victory ? 0x00ff00 : 0xff0000);
-    
-    if (victory) {
-      const goldReward = 10;
-      GameState.getInstance().addGold(goldReward);
-      
-      const victoryText = this.add.text(0, -60, 'Victory!', {
-        fontSize: '48px',
-        color: '#00ff00'
-      }).setOrigin(0.5);
-
-      const goldText = this.add.text(0, -10, `+${goldReward} Gold!`, {
-        fontSize: '24px',
-        color: '#FFD700'
-      }).setOrigin(0.5);
-      
-      popup.add([popupBg, victoryText, goldText]);
-    } else {
-      const defeatText = this.add.text(0, -30, 'Defeat!', {
-        fontSize: '48px',
-        color: '#ff0000'
-      }).setOrigin(0.5);
-      
-      popup.add([popupBg, defeatText]);
-    }
-
-    // Return to home button
-    const returnButton = this.add.text(0, 60, 'Return to Home', {
-      color: '#ffffff',
-      backgroundColor: '#4A5568',
-      padding: { x: 20, y: 10 },
-      fontSize: '18px'
-    })
-    .setInteractive()
-    .setOrigin(0.5)
-    .on('pointerdown', () => this.scene.start('HomeScene'));
-    
-    popup.add(returnButton);
-
-    // Animate popup appearance
-    this.tweens.add({
-      targets: overlay,
-      alpha: 0.7,
-      duration: 300,
-      ease: 'Power2'
-    });
-
-    this.tweens.add({
-      targets: popup,
+      targets: [messageBg, message],
       scale: 1,
-      alpha: 1,
-      duration: 500,
+      duration: 200,
       ease: 'Back.easeOut',
-      delay: 200
+      onComplete: () => {
+        // Quick fade for battle pace
+        this.tweens.add({
+          targets: [messageBg, message],
+          alpha: 0,
+          duration: 1500,
+          delay: 1500,
+          onComplete: () => {
+            messageBg.destroy();
+            message.destroy();
+          }
+        });
+      }
     });
   }
 
   private showNoTeamMessage() {
-    this.add.text(208, 250, 'No characters in battle team!\nGo to Collection to set up your team.', {
+    // Professional no-team message
+    const messageBg = this.add.graphics();
+    messageBg.fillStyle(0x2D3748, 0.9);
+    messageBg.fillRoundedRect(58, 200, 300, 150, 20);
+    messageBg.lineStyle(3, 0xFF4444, 1);
+    messageBg.strokeRoundedRect(58, 200, 300, 150, 20);
+
+    this.add.text(208, 250, '⚠️ No Battle Team!', {
       fontSize: '18px',
-      color: '#ffffff',
-      align: 'center'
+      color: '#FF4444',
+      fontFamily: 'Arial'
     }).setOrigin(0.5);
 
-    // Add back button
-    this.add.text(208, 350, 'Back to Home', {
+    this.add.text(208, 275, 'Go to Collection to set up your team.', {
+      fontSize: '12px',
       color: '#ffffff',
-      backgroundColor: '#4A5568',
-      padding: { x: 20, y: 10 },
-      fontSize: '16px'
-    })
-    .setInteractive()
-    .setOrigin(0.5)
-    .on('pointerdown', () => this.scene.start('HomeScene'));
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Enhanced back button
+    const backButtonContainer = this.add.container(208, 320);
+    const backButtonBg = this.add.graphics();
+    backButtonBg.fillStyle(0x4A5568, 0.9);
+    backButtonBg.fillRoundedRect(-60, -20, 120, 40, 20);
+    backButtonBg.lineStyle(2, 0x60A5FA, 0.8);
+    backButtonBg.strokeRoundedRect(-60, -20, 120, 40, 20);
+
+    const backButtonText = this.add.text(0, 0, 'Back to Home', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    backButtonContainer.add([backButtonBg, backButtonText]);
+    backButtonContainer.setSize(120, 40);
+    backButtonContainer.setInteractive()
+      .on('pointerdown', () => this.scene.start('HomeScene'))
+      .on('pointerover', () => {
+        this.tweens.add({
+          targets: backButtonContainer,
+          scaleX: 1.05,
+          scaleY: 1.05,
+          duration: 200
+        });
+      })
+      .on('pointerout', () => {
+        this.tweens.add({
+          targets: backButtonContainer,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 200
+        });
+      });
   }
 
   private displayPlayerCharacter() {
@@ -659,6 +695,99 @@ export class BattleScene extends Phaser.Scene {
         }
       });
     }
+  }
+
+  private showDamage(x: number, y: number, damage: number, color: string) {
+    const damageText = this.add.text(x, y, `-${damage}`, {
+      fontSize: '20px',
+      color: color,
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: damageText,
+      y: y - 50,
+      alpha: 0,
+      duration: 1000,
+      onComplete: () => damageText.destroy()
+    });
+  }
+
+  private endBattle(victory: boolean) {
+    this.battlePhase = 'battle-end';
+    
+    // Create overlay background
+    const overlay = this.add.rectangle(208, 300, 416, 600, 0x000000)
+      .setAlpha(0)
+      .setDepth(100);
+    
+    // Create popup container
+    const popup = this.add.container(208, 300)
+      .setDepth(101)
+      .setScale(0.1)
+      .setAlpha(0);
+    
+    // Popup background
+    const popupBg = this.add.rectangle(0, 0, 350, 250, 0x2D3748)
+      .setStrokeStyle(4, victory ? 0x00ff00 : 0xff0000);
+    
+    if (victory) {
+      const goldReward = 10;
+      GameState.getInstance().addGold(goldReward);
+      
+      const victoryText = this.add.text(0, -60, 'Victory!', {
+        fontSize: '48px',
+        color: '#00ff00',
+        fontFamily: 'Arial'
+      }).setOrigin(0.5);
+
+      const goldText = this.add.text(0, -10, `+${goldReward} Gold!`, {
+        fontSize: '24px',
+        color: '#FFD700',
+        fontFamily: 'Arial'
+      }).setOrigin(0.5);
+      
+      popup.add([popupBg, victoryText, goldText]);
+    } else {
+      const defeatText = this.add.text(0, -30, 'Defeat!', {
+        fontSize: '48px',
+        color: '#ff0000',
+        fontFamily: 'Arial'
+      }).setOrigin(0.5);
+      
+      popup.add([popupBg, defeatText]);
+    }
+
+    // Return to home button
+    const returnButton = this.add.text(0, 60, 'Return to Home', {
+      color: '#ffffff',
+      backgroundColor: '#4A5568',
+      padding: { x: 20, y: 10 },
+      fontSize: '18px',
+      fontFamily: 'Arial'
+    })
+    .setInteractive()
+    .setOrigin(0.5)
+    .on('pointerdown', () => this.scene.start('HomeScene'));
+    
+    popup.add(returnButton);
+
+    // Animate popup appearance
+    this.tweens.add({
+      targets: overlay,
+      alpha: 0.7,
+      duration: 300,
+      ease: 'Power2'
+    });
+
+    this.tweens.add({
+      targets: popup,
+      scale: 1,
+      alpha: 1,
+      duration: 500,
+      ease: 'Back.easeOut',
+      delay: 200
+    });
   }
 
   private initializeCharacterStats() {

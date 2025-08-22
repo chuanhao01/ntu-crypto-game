@@ -21,6 +21,24 @@ export class CombinerScene extends Phaser.Scene {
     super({ key: 'CombinerScene' });
   }
 
+  init() {
+    // Reset all scene state when entering
+    this.selectedSlot1 = null;
+    this.selectedSlot2 = null;
+    this.slot1Container = null;
+    this.slot2Container = null;
+    this.combineButton = null;
+    this.characterSprites = [];
+    this.draggedCharacter = undefined;
+    this.dragSprite = undefined;
+    this.detailPopup = undefined;
+    this.fusionSlots = [];
+    this.loadingOverlay = null;
+    this.loadingText = null;
+    this.combineButtonContainer = undefined;
+    this.combineButtonBg = undefined;
+  }
+
   preload() {
     // Load sprites dynamically based on character data
     const characterManager = CharacterManager.getInstance();
@@ -57,33 +75,20 @@ export class CombinerScene extends Phaser.Scene {
   }
 
   create() {
+    // Clean up any existing event listeners first
+    this.cleanupEventListeners();
+
     // Create animations first
     this.createAnimations();
 
     this.gameManager = GameManager.getInstance();
     this.characterManager = CharacterManager.getInstance();
 
-    // Background
-    this.add.rectangle(208, 331, 416, 662, 0x2D3748);
+    // Professional background
+    this.createBackground();
 
-    // Title
-    this.add.text(208, 50, 'Character Combiner', {
-      fontSize: '24px',
-      color: '#ffffff',
-      fontFamily: 'Arial'
-    }).setOrigin(0.5);
-
-    // Back button
-    const backButton = this.add.text(50, 50, '← Back', {
-      fontSize: '18px',
-      color: '#60A5FA',
-      fontFamily: 'Arial'
-    }).setOrigin(0.5);
-
-    backButton.setInteractive();
-    backButton.on('pointerdown', () => {
-      this.scene.start('HomeScene');
-    });
+    // Styled title and back button
+    this.createHeaderSection();
 
     // Fusion slots
     this.createFusionSlots();
@@ -95,83 +100,209 @@ export class CombinerScene extends Phaser.Scene {
     this.createCombineButton();
   }
 
-  shutdown() {
-    // Clean up drag and drop listeners
+  private cleanupEventListeners() {
+    // Remove any lingering drag event listeners
     this.input.off('pointermove', this.onDrag, this);
     this.input.off('pointerup', this.onDrop, this);
-
+    
     // Clean up any existing drag sprite
     if (this.dragSprite) {
       this.dragSprite.destroy();
       this.dragSprite = undefined;
     }
+    
+    // Reset drag state
+    this.draggedCharacter = undefined;
+  }
 
-    // Clean up popup
-    if (this.detailPopup) {
-      this.detailPopup.destroy();
-      this.detailPopup = undefined;
+  private createBackground() {
+    // Professional gradient background
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x1a1a2e, 1);
+    graphics.fillRect(0, 0, 416, 662);
+
+    // Decorative elements
+    const stars = this.add.graphics();
+    stars.fillStyle(0xffffff, 0.6);
+    for (let i = 0; i < 35; i++) {
+      const x = Math.random() * 416;
+      const y = Math.random() * 300;
+      const size = Math.random() * 1.5 + 0.5;
+      stars.fillCircle(x, y, size);
     }
 
-    // Reset state
-    this.draggedCharacter = undefined;
-    this.characterSprites = [];
-    this.fusionSlots = [];
+    this.tweens.add({
+      targets: stars,
+      alpha: 0.3,
+      duration: 3000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private createHeaderSection() {
+    // Styled back button
+    const backButtonBg = this.add.graphics();
+    backButtonBg.fillStyle(0x4A5568, 0.9);
+    backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+    backButtonBg.lineStyle(2, 0xFF44FF, 0.8);
+    backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+
+    const backButton = this.add.text(50, 27, '← Back', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
+    })
+    .setOrigin(0.5)
+    .setInteractive()
+    .on('pointerdown', () => this.scene.start('HomeScene'))
+    .on('pointerover', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0xFF44FF, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0xFF44FF, 1);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    })
+    .on('pointerout', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0x4A5568, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0xFF44FF, 0.8);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    });
+
+    // Professional title
+    const titleShadow = this.add.text(210, 52, '🔬 FUSION LAB', {
+      fontSize: '20px',
+      color: '#000000',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5).setAlpha(0.3);
+
+    const titleText = this.add.text(208, 50, '🔬 FUSION LAB', {
+      fontSize: '20px',
+      color: '#FF44FF',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Subtitle
+    this.add.text(208, 70, 'Create Powerful Hybrids', {
+      fontSize: '10px',
+      color: '#CCCCCC',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Animated title
+    this.tweens.add({
+      targets: titleText,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 2500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
   }
 
   private createFusionSlots() {
-    // Slot 1
-    const slot1 = this.createFusionSlot(140, 150, 'Slot 1', 0);
+    // Enhanced fusion slots with glow effects
+    const slot1 = this.createEnhancedFusionSlot(140, 150, 'Slot 1', 0);
     this.fusionSlots.push(slot1);
 
-    // Slot 2
-    const slot2 = this.createFusionSlot(276, 150, 'Slot 2', 1);
+    const slot2 = this.createEnhancedFusionSlot(276, 150, 'Slot 2', 1);
     this.fusionSlots.push(slot2);
 
-    // Plus symbol between slots
-    this.add.text(208, 150, '+', {
+    // Animated plus symbol
+    const plusSymbol = this.add.text(208, 150, '+', {
       fontSize: '32px',
-      color: '#60A5FA',
+      color: '#FF44FF',
       fontFamily: 'Arial'
     }).setOrigin(0.5);
+
+    // Add glow effect to plus
+    this.tweens.add({
+      targets: plusSymbol,
+      alpha: 0.6,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
   }
 
-  private createFusionSlot(x: number, y: number, label: string, slotIndex: number): Phaser.GameObjects.Container {
+  private createEnhancedFusionSlot(x: number, y: number, label: string, slotIndex: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
 
-    // Background slot
-    const slotBg = this.add.rectangle(0, 0, 80, 100, 0x4A5568, 1);
-    slotBg.setStrokeStyle(2, 0x718096);
+    // Enhanced slot background with glow
+    const slotBg = this.add.graphics();
+    slotBg.fillStyle(0x4A5568, 0.8);
+    slotBg.fillRoundedRect(-40, -50, 80, 100, 10);
+    slotBg.lineStyle(2, 0xFF44FF, 0.6);
+    slotBg.strokeRoundedRect(-40, -50, 80, 100, 10);
 
-    // Label
-    const labelText = this.add.text(0, 60, label, {
-      fontSize: '14px',
+    // Animated inner glow
+    const innerGlow = this.add.graphics();
+    innerGlow.fillStyle(0xFF44FF, 0.1);
+    innerGlow.fillRoundedRect(-35, -45, 70, 90, 8);
+
+    // Enhanced label
+    const labelBg = this.add.graphics();
+    labelBg.fillStyle(0x000000, 0.8);
+    labelBg.fillRoundedRect(-25, 45, 50, 15, 5);
+    
+    const labelText = this.add.text(0, 52, label, {
+      fontSize: '10px',
       color: '#ffffff',
       fontFamily: 'Arial'
     }).setOrigin(0.5);
 
-    container.add([slotBg, labelText]);
+    container.add([slotBg, innerGlow, labelBg, labelText]);
     container.setSize(80, 100);
     container.setInteractive();
     container.setData('slotIndex', slotIndex);
     container.setData('slotBg', slotBg);
+    container.setData('innerGlow', innerGlow);
 
-    // Visual feedback for drop zones
+    // Enhanced visual feedback with stored references
     container.on('pointerover', () => {
       if (this.draggedCharacter) {
-        slotBg.setStrokeStyle(3, 0x00ff00);
+        slotBg.clear();
+        slotBg.fillStyle(0x4A5568, 0.8);
+        slotBg.fillRoundedRect(-40, -50, 80, 100, 10);
+        slotBg.lineStyle(3, 0x00ff00, 1);
+        slotBg.strokeRoundedRect(-40, -50, 80, 100, 10);
+        
+        innerGlow.clear();
+        innerGlow.fillStyle(0x00ff00, 0.2);
+        innerGlow.fillRoundedRect(-35, -45, 70, 90, 8);
       }
     });
 
     container.on('pointerout', () => {
-      slotBg.setStrokeStyle(2, 0x718096);
+      slotBg.clear();
+      slotBg.fillStyle(0x4A5568, 0.8);
+      slotBg.fillRoundedRect(-40, -50, 80, 100, 10);
+      slotBg.lineStyle(2, 0xFF44FF, 0.6);
+      slotBg.strokeRoundedRect(-40, -50, 80, 100, 10);
+      
+      innerGlow.clear();
+      innerGlow.fillStyle(0xFF44FF, 0.1);
+      innerGlow.fillRoundedRect(-35, -45, 70, 90, 8);
     });
 
     return container;
   }
 
   private createCollectionDisplay() {
+    // Enhanced collection title
+    const collectionBg = this.add.graphics();
+    collectionBg.fillStyle(0x000000, 0.6);
+    collectionBg.fillRoundedRect(58, 245, 300, 30, 15);
+    collectionBg.lineStyle(2, 0xFF44FF, 0.6);
+    collectionBg.strokeRoundedRect(58, 245, 300, 30, 15);
+
     this.add.text(208, 260, 'Your Collection (Drag to combine)', {
-      fontSize: '18px',
+      fontSize: '14px',
       color: '#ffffff',
       fontFamily: 'Arial'
     }).setOrigin(0.5);
@@ -311,6 +442,11 @@ export class CombinerScene extends Phaser.Scene {
   }
 
   private startDrag(character: any, pointer: Phaser.Input.Pointer) {
+    console.log('Starting drag for character:', character.name); // Debug log
+    
+    // Clean up any existing drag first
+    this.cleanupEventListeners();
+    
     this.draggedCharacter = character;
     
     // Create visual drag sprite
@@ -336,40 +472,66 @@ export class CombinerScene extends Phaser.Scene {
   }
 
   private onDrop(pointer: Phaser.Input.Pointer) {
+    console.log('Drop detected at position:', pointer.x, pointer.y); // Debug log
+    
     if (!this.draggedCharacter || !this.dragSprite) return;
 
     // Check if dropped on a fusion slot
     const droppedOnSlot = this.getFusionSlotAtPosition(pointer.x, pointer.y);
+    console.log('Dropped on slot:', droppedOnSlot); // Debug log
     
     if (droppedOnSlot !== -1) {
       this.addToFusionSlot(droppedOnSlot, this.draggedCharacter);
+    } else {
+      console.log('Not dropped on any slot'); // Debug log
     }
 
     // Clean up drag
-    this.dragSprite.destroy();
-    this.dragSprite = undefined;
-    this.draggedCharacter = undefined;
-
-    // Remove event listeners
-    this.input.off('pointermove', this.onDrag, this);
-    this.input.off('pointerup', this.onDrop, this);
+    this.cleanupEventListeners();
   }
 
   private getFusionSlotAtPosition(x: number, y: number): number {
-    for (let i = 0; i < this.fusionSlots.length; i++) {
-      const slot = this.fusionSlots[i];
-      const bounds = slot.getBounds();
-      if (bounds.contains(x, y)) {
-        return i;
-      }
+    // Use the known positions of the fusion slots instead of getBounds()
+    const slot1Bounds = {
+      x: 140 - 40, // slot1 x position minus half width
+      y: 150 - 50, // slot1 y position minus half height  
+      width: 80,
+      height: 100
+    };
+    
+    const slot2Bounds = {
+      x: 276 - 40, // slot2 x position minus half width
+      y: 150 - 50, // slot2 y position minus half height
+      width: 80, 
+      height: 100
+    };
+    
+    // Add padding for easier drop detection
+    const padding = 30;
+    
+    // Check slot 1
+    if (x >= slot1Bounds.x - padding && 
+        x <= slot1Bounds.x + slot1Bounds.width + padding && 
+        y >= slot1Bounds.y - padding && 
+        y <= slot1Bounds.y + slot1Bounds.height + padding) {
+      return 0;
     }
+    
+    // Check slot 2
+    if (x >= slot2Bounds.x - padding && 
+        x <= slot2Bounds.x + slot2Bounds.width + padding && 
+        y >= slot2Bounds.y - padding && 
+        y <= slot2Bounds.y + slot2Bounds.height + padding) {
+      return 1;
+    }
+    
     return -1;
   }
 
   private addToFusionSlot(slotIndex: number, character: any) {
     if (slotIndex === 0) {
       // Check if it's the same character as slot 2
-      if (this.selectedSlot2 && this.selectedSlot2.id === character.id) {
+      if (this.selectedSlot2 && this.selectedSlot2.name === character.name && this.selectedSlot2.rarity === character.rarity) {
         this.showMessage('Cannot combine the same character!', '#ff6666');
         return;
       }
@@ -377,7 +539,7 @@ export class CombinerScene extends Phaser.Scene {
       this.updateFusionSlotDisplay(0, character);
     } else if (slotIndex === 1) {
       // Check if it's the same character as slot 1
-      if (this.selectedSlot1 && this.selectedSlot1.id === character.id) {
+      if (this.selectedSlot1 && this.selectedSlot1.name === character.name && this.selectedSlot1.rarity === character.rarity) {
         this.showMessage('Cannot combine the same character!', '#ff6666');
         return;
       }
@@ -446,20 +608,41 @@ export class CombinerScene extends Phaser.Scene {
   }
 
   private showMessage(text: string, color: string) {
-    const message = this.add.text(208, 230, text, {
+    // Enhanced message with professional styling
+    const messageBg = this.add.graphics();
+    messageBg.fillStyle(0x000000, 0.9);
+    messageBg.fillRoundedRect(58, 220, 300, 30, 15);
+    messageBg.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 1);
+    messageBg.strokeRoundedRect(58, 220, 300, 30, 15);
+
+    const message = this.add.text(208, 235, text, {
       fontSize: '12px',
       color: color,
-      backgroundColor: '#000000',
-      padding: { x: 8, y: 4 },
       fontFamily: 'Arial'
     }).setOrigin(0.5);
 
-    // Fade out after 2 seconds
+    // Entrance animation
+    messageBg.setScale(0);
+    message.setScale(0);
+    
     this.tweens.add({
-      targets: message,
-      alpha: 0,
-      duration: 2000,
-      onComplete: () => message.destroy()
+      targets: [messageBg, message],
+      scale: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        // Fade out after 2 seconds
+        this.tweens.add({
+          targets: [messageBg, message],
+          alpha: 0,
+          duration: 2000,
+          delay: 2000,
+          onComplete: () => {
+            messageBg.destroy();
+            message.destroy();
+          }
+        });
+      }
     });
   }
 
@@ -619,37 +802,82 @@ export class CombinerScene extends Phaser.Scene {
   }
 
   private createCombineButton() {
-    this.combineButton = this.add.text(208, 600, 'Combine Characters', {
-      fontSize: '18px',
+    const buttonContainer = this.add.container(208, 600);
+
+    // Enhanced button with animation
+    const buttonBg = this.add.graphics();
+    buttonBg.fillStyle(0x4A5568, 0.9);
+    buttonBg.fillRoundedRect(-120, -25, 240, 50, 25);
+    buttonBg.lineStyle(3, 0xFF44FF, 0.8);
+    buttonBg.strokeRoundedRect(-120, -25, 240, 50, 25);
+
+    this.combineButton = this.add.text(0, 0, '⚡ Combine Characters', {
+      fontSize: '16px',
       color: '#9CA3AF',
-      fontFamily: 'Arial',
-      backgroundColor: '#4A5568',
-      padding: { x: 20, y: 10 }
+      fontFamily: 'Arial'
     }).setOrigin(0.5);
 
-    this.combineButton.setInteractive();
-    this.combineButton.on('pointerdown', () => {
-      this.combineCharacters();
+    buttonContainer.add([buttonBg, this.combineButton]);
+    buttonContainer.setSize(240, 50);
+    buttonContainer.setInteractive();
+
+    // Store references for updateCombineButton
+    this.combineButtonContainer = buttonContainer;
+    this.combineButtonBg = buttonBg;
+
+    buttonContainer.on('pointerover', () => {
+      this.tweens.add({
+        targets: buttonContainer,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+    });
+
+    buttonContainer.on('pointerout', () => {
+      this.tweens.add({
+        targets: buttonContainer,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+    });
+
+    buttonContainer.on('pointerdown', () => {
+      this.tweens.add({
+        targets: buttonContainer,
+        scaleX: 0.95,
+        scaleY: 0.95,
+        duration: 100,
+        yoyo: true,
+        onComplete: () => this.combineCharacters()
+      });
     });
 
     this.updateCombineButton();
   }
 
   private updateCombineButton() {
-    if (!this.combineButton) return;
+    if (!this.combineButton || !this.combineButtonBg) return;
 
     const canCombine = this.selectedSlot1 && this.selectedSlot2;
     
     if (canCombine) {
-      this.combineButton.setStyle({
-        color: '#ffffff',
-        backgroundColor: '#3B82F6'
-      });
+      this.combineButton.setStyle({ color: '#ffffff' });
+      this.combineButtonBg.clear();
+      this.combineButtonBg.fillStyle(0x3B82F6, 0.9);
+      this.combineButtonBg.fillRoundedRect(-120, -25, 240, 50, 25);
+      this.combineButtonBg.lineStyle(3, 0x60A5FA, 1);
+      this.combineButtonBg.strokeRoundedRect(-120, -25, 240, 50, 25);
     } else {
-      this.combineButton.setStyle({
-        color: '#9CA3AF',
-        backgroundColor: '#4A5568'
-      });
+      this.combineButton.setStyle({ color: '#9CA3AF' });
+      this.combineButtonBg.clear();
+      this.combineButtonBg.fillStyle(0x4A5568, 0.9);
+      this.combineButtonBg.fillRoundedRect(-120, -25, 240, 50, 25);
+      this.combineButtonBg.lineStyle(3, 0xFF44FF, 0.8);
+      this.combineButtonBg.strokeRoundedRect(-120, -25, 240, 50, 25);
     }
   }
 
@@ -885,6 +1113,10 @@ export class CombinerScene extends Phaser.Scene {
   // Add loading message properties
   private loadingOverlay: Phaser.GameObjects.Rectangle | null = null;
   private loadingText: Phaser.GameObjects.Text | null = null;
+  
+  // Add properties for enhanced button (remove duplicate declarations if they exist elsewhere)
+  private combineButtonContainer?: Phaser.GameObjects.Container;
+  private combineButtonBg?: Phaser.GameObjects.Graphics;
 
   private createAnimations() {
     const characterManager = CharacterManager.getInstance();
@@ -925,5 +1157,57 @@ export class CombinerScene extends Phaser.Scene {
         });
       }
     }
+  }
+
+  shutdown() {
+    // Clean up event listeners
+    this.cleanupEventListeners();
+
+    // Clean up fusion slots
+    this.fusionSlots.forEach(slot => {
+      slot.removeAllListeners();
+      slot.destroy();
+    });
+    this.fusionSlots = [];
+
+    // Clean up character sprites
+    this.characterSprites.forEach(sprite => {
+      sprite.removeAllListeners();
+      sprite.destroy();
+    });
+    this.characterSprites = [];
+
+    // Clean up popup
+    if (this.detailPopup) {
+      this.detailPopup.destroy();
+      this.detailPopup = undefined;
+    }
+
+    // Clean up loading overlay
+    if (this.loadingOverlay) {
+      this.loadingOverlay.destroy();
+      this.loadingOverlay = null;
+    }
+    if (this.loadingText) {
+      this.loadingText.destroy();
+      this.loadingText = null;
+    }
+
+    // Clean up button references
+    if (this.combineButtonContainer) {
+      this.combineButtonContainer.removeAllListeners();
+      this.combineButtonContainer.destroy();
+      this.combineButtonContainer = undefined;
+    }
+
+    // Reset all state
+    this.selectedSlot1 = null;
+    this.selectedSlot2 = null;
+    this.slot1Container = null;
+    this.slot2Container = null;
+    this.combineButton = null;
+    this.draggedCharacter = undefined;
+    this.dragSprite = undefined;
+    this.combineButtonBg = undefined;
   }
 }

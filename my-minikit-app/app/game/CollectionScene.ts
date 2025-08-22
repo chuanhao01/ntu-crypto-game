@@ -64,33 +64,171 @@ export class CollectionScene extends Phaser.Scene {
     // Create animations
     this.createAnimations();
 
-    // Add back button at top left
-    this.add.text(20, 20, 'Back', {
-      color: '#ffffff',
-      backgroundColor: '#4A5568',
-      padding: { x: 10, y: 5 },
-      fontSize: '16px'
-    })
-    .setInteractive()
-    .on('pointerdown', () => this.scene.start('HomeScene'));
+    // Professional background
+    this.createBackground();
 
-    // Gold display at top right
-    this.goldText = this.add.text(396, 20, `Gold: ${GameState.getInstance().getGold()}`, {
-      fontSize: '16px',
-      color: '#FFD700'
-    }).setOrigin(1, 0);
+    // Styled back button
+    this.createBackButton();
 
-    // Title
-    this.add.text(208, 50, 'Collection', {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    // Enhanced gold display
+    this.createGoldDisplay();
+
+    // Professional title
+    this.createTitle();
 
     // Always show team at the top
     this.createTeamSection();
     
     // Show all characters below
     this.displayAllCharacters();
+  }
+
+  private createBackground() {
+    // Professional gradient background
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x1a1a2e, 1);
+    graphics.fillRect(0, 0, 416, 662);
+
+    // Decorative elements
+    const stars = this.add.graphics();
+    stars.fillStyle(0xffffff, 0.6);
+    for (let i = 0; i < 40; i++) {
+      const x = Math.random() * 416;
+      const y = Math.random() * 300;
+      const size = Math.random() * 1.5 + 0.5;
+      stars.fillCircle(x, y, size);
+    }
+
+    this.tweens.add({
+      targets: stars,
+      alpha: 0.3,
+      duration: 3000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private createBackButton() {
+    const backButtonBg = this.add.graphics();
+    backButtonBg.fillStyle(0x4A5568, 0.9);
+    backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+    backButtonBg.lineStyle(2, 0x4444FF, 0.8);
+    backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+
+    const backButton = this.add.text(50, 27, '← Back', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
+    })
+    .setOrigin(0.5)
+    .setInteractive()
+    .on('pointerdown', () => this.scene.start('HomeScene'))
+    .on('pointerover', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0x4444FF, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0x4444FF, 1);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    })
+    .on('pointerout', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0x4A5568, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0x4444FF, 0.8);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    });
+  }
+
+  private createGoldDisplay() {
+    // Enhanced gold frame
+    const goldFrame = this.add.graphics();
+    goldFrame.fillStyle(0x000000, 0.8);
+    goldFrame.fillRoundedRect(280, 15, 130, 30, 15);
+    goldFrame.lineStyle(2, 0xFFD700, 1);
+    goldFrame.strokeRoundedRect(280, 15, 130, 30, 15);
+
+    const goldIcon = this.add.text(295, 30, '💰', {
+      fontSize: '16px'
+    }).setOrigin(0, 0.5);
+
+    this.goldText = this.add.text(320, 30, `${GameState.getInstance().getGold()}`, {
+      fontSize: '14px',
+      color: '#FFD700',
+      fontFamily: 'Arial'
+    }).setOrigin(0, 0.5);
+  }
+
+  private createTitle() {
+    // Title with professional styling
+    const titleShadow = this.add.text(210, 52, '📚 COLLECTION', {
+      fontSize: '20px',
+      color: '#000000',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5).setAlpha(0.3);
+
+    const titleText = this.add.text(208, 50, '📚 COLLECTION', {
+      fontSize: '20px',
+      color: '#4444FF',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Subtitle
+    this.add.text(208, 70, 'Manage Your Team & Characters', {
+      fontSize: '10px',
+      color: '#CCCCCC',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Gentle pulsing
+    this.tweens.add({
+      targets: titleText,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      duration: 3000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private showMessage(text: string, color: string) {
+    // Enhanced message with background
+    const messageBg = this.add.graphics();
+    messageBg.fillStyle(0x000000, 0.9);
+    messageBg.fillRoundedRect(58, 170, 300, 30, 15);
+    messageBg.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 1);
+    messageBg.strokeRoundedRect(58, 170, 300, 30, 15);
+
+    const message = this.add.text(208, 185, text, {
+      fontSize: '12px',
+      color: color,
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Entrance animation
+    messageBg.setAlpha(0);
+    message.setAlpha(0);
+    
+    this.tweens.add({
+      targets: [messageBg, message],
+      alpha: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        // Fade out after 2 seconds
+        this.tweens.add({
+          targets: [messageBg, message],
+          alpha: 0,
+          duration: 2000,
+          delay: 2000,
+          onComplete: () => {
+            messageBg.destroy();
+            message.destroy();
+          }
+        });
+      }
+    });
   }
 
   shutdown() {
@@ -537,23 +675,6 @@ export class CollectionScene extends Phaser.Scene {
 
     // Recreate team section
     this.createTeamSection();
-  }
-
-  private showMessage(text: string, color: string) {
-    const message = this.add.text(208, 180, text, {
-      fontSize: '14px',
-      color: color,
-      backgroundColor: '#000000',
-      padding: { x: 10, y: 5 }
-    }).setOrigin(0.5);
-
-    // Fade out after 2 seconds
-    this.tweens.add({
-      targets: message,
-      alpha: 0,
-      duration: 2000,
-      onComplete: () => message.destroy()
-    });
   }
 
   private showCharacterDetails(character: any) {

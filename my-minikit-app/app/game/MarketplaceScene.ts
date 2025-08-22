@@ -56,44 +56,136 @@ export class MarketplaceScene extends Phaser.Scene {
   create() {
     this.createAnimations();
 
-    // Add back button at top left
-    this.add.text(20, 20, 'Back', {
-      color: '#ffffff',
-      backgroundColor: '#4A5568',
-      padding: { x: 10, y: 5 },
-      fontSize: '16px'
-    })
-    .setInteractive()
-    .setDepth(200) // Higher depth than background
-    .on('pointerdown', () => this.scene.start('HomeScene'));
+    // Professional background
+    this.createBackground();
 
-    // Gold display at top right
-    this.goldText = this.add.text(396, 20, `Gold: ${GameState.getInstance().getGold()}`, {
-      fontSize: '16px',
-      color: '#FFD700'
-    }).setOrigin(1, 0).setDepth(200);
-
-    // Title
-    this.add.text(208, 50, 'Marketplace', {
-      fontSize: '24px',
-      color: '#ffffff'
-    }).setOrigin(0.5).setDepth(200);
+    // Styled header section
+    this.createHeaderSection();
 
     // Create scrollable content container
     this.contentContainer = this.add.container(0, 0);
 
-    // Create tabs
+    // Create enhanced tabs
     this.createTabs();
     
-    // Add a background rectangle to cover scrolled content above tabs
-    const headerBg = this.add.rectangle(208, 75, 416, 150, 0x2D3748)
-      .setDepth(100); // High depth to cover scrolled content
+    // Add a professional background to cover scrolled content above tabs
+    const headerBg = this.add.graphics();
+    headerBg.fillStyle(0x1a1a2e, 0.95);
+    headerBg.fillRect(0, 0, 416, 150);
+    headerBg.setDepth(100);
 
-    // Add drag scrolling (after tabs are created)
+    // Add drag scrolling
     this.setupScrolling();
 
     // Display initial content
     this.displayContent();
+  }
+
+  private createBackground() {
+    // Professional gradient background
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x1a1a2e, 1);
+    graphics.fillRect(0, 0, 416, 662);
+
+    // Decorative elements
+    const stars = this.add.graphics();
+    stars.fillStyle(0xffffff, 0.5);
+    for (let i = 0; i < 25; i++) {
+      const x = Math.random() * 416;
+      const y = Math.random() * 300;
+      const size = Math.random() * 1.5 + 0.5;
+      stars.fillCircle(x, y, size);
+    }
+
+    this.tweens.add({
+      targets: stars,
+      alpha: 0.2,
+      duration: 4000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private createHeaderSection() {
+    // Styled back button
+    const backButtonBg = this.add.graphics();
+    backButtonBg.fillStyle(0x4A5568, 0.9);
+    backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+    backButtonBg.lineStyle(2, 0xFFAA00, 0.8);
+    backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+
+    const backButton = this.add.text(50, 27, '← Back', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
+    })
+    .setOrigin(0.5)
+    .setInteractive()
+    .setDepth(200)
+    .on('pointerdown', () => this.scene.start('HomeScene'))
+    .on('pointerover', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0xFFAA00, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0xFFAA00, 1);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    })
+    .on('pointerout', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0x4A5568, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0xFFAA00, 0.8);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    });
+
+    // Enhanced gold display
+    const goldFrame = this.add.graphics();
+    goldFrame.fillStyle(0x000000, 0.8);
+    goldFrame.fillRoundedRect(280, 15, 130, 30, 15);
+    goldFrame.lineStyle(2, 0xFFD700, 1);
+    goldFrame.strokeRoundedRect(280, 15, 130, 30, 15);
+
+    const goldIcon = this.add.text(295, 30, '💰', {
+      fontSize: '16px'
+    }).setOrigin(0, 0.5).setDepth(200);
+
+    this.goldText = this.add.text(320, 30, `${GameState.getInstance().getGold()}`, {
+      fontSize: '14px',
+      color: '#FFD700',
+      fontFamily: 'Arial'
+    }).setOrigin(0, 0.5).setDepth(200);
+
+    // Professional title
+    const titleShadow = this.add.text(210, 52, '🏪 MARKETPLACE', {
+      fontSize: '18px',
+      color: '#000000',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5).setAlpha(0.3).setDepth(200);
+
+    const titleText = this.add.text(208, 50, '🏪 MARKETPLACE', {
+      fontSize: '18px',
+      color: '#FFAA00',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5).setDepth(200);
+
+    // Subtitle
+    this.add.text(208, 70, 'Trade with Others', {
+      fontSize: '10px',
+      color: '#CCCCCC',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5).setDepth(200);
+
+    // Animated title
+    this.tweens.add({
+      targets: titleText,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      duration: 3000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
   }
 
   private setupScrolling() {
@@ -182,28 +274,42 @@ export class MarketplaceScene extends Phaser.Scene {
     this.tabButtons.forEach(button => button.destroy());
     this.tabButtons = [];
 
-    // Buy tab
-    const buyTab = this.add.text(150, 90, 'Buy', {
-      fontSize: '16px',
-      color: this.selectedTab === 'buy' ? '#ffffff' : '#888888',
-      backgroundColor: this.selectedTab === 'buy' ? '#4A5568' : '#2D3748',
-      padding: { x: 15, y: 8 }
+    // Enhanced Buy tab
+    const buyTabBg = this.add.graphics();
+    const buyActive = this.selectedTab === 'buy';
+    buyTabBg.fillStyle(buyActive ? 0x4A5568 : 0x2D3748, 0.9);
+    buyTabBg.fillRoundedRect(120, 82, 60, 25, 12);
+    buyTabBg.lineStyle(2, buyActive ? 0xFFAA00 : 0x666666, buyActive ? 1 : 0.6);
+    buyTabBg.strokeRoundedRect(120, 82, 60, 25, 12);
+    buyTabBg.setDepth(200);
+
+    const buyTab = this.add.text(150, 94, 'Buy', {
+      fontSize: '12px',
+      color: buyActive ? '#ffffff' : '#888888',
+      fontFamily: 'Arial'
     })
     .setInteractive()
     .setOrigin(0.5)
-    .setDepth(200) // Higher depth than background
+    .setDepth(200)
     .on('pointerdown', () => this.switchTab('buy'));
 
-    // Sell tab
-    const sellTab = this.add.text(266, 90, 'Sell', {
-      fontSize: '16px',
-      color: this.selectedTab === 'sell' ? '#ffffff' : '#888888',
-      backgroundColor: this.selectedTab === 'sell' ? '#4A5568' : '#2D3748',
-      padding: { x: 15, y: 8 }
+    // Enhanced Sell tab
+    const sellTabBg = this.add.graphics();
+    const sellActive = this.selectedTab === 'sell';
+    sellTabBg.fillStyle(sellActive ? 0x4A5568 : 0x2D3748, 0.9);
+    sellTabBg.fillRoundedRect(236, 82, 60, 25, 12);
+    sellTabBg.lineStyle(2, sellActive ? 0xFFAA00 : 0x666666, sellActive ? 1 : 0.6);
+    sellTabBg.strokeRoundedRect(236, 82, 60, 25, 12);
+    sellTabBg.setDepth(200);
+
+    const sellTab = this.add.text(266, 94, 'Sell', {
+      fontSize: '12px',
+      color: sellActive ? '#ffffff' : '#888888',
+      fontFamily: 'Arial'
     })
     .setInteractive()
     .setOrigin(0.5)
-    .setDepth(200) // Higher depth than background
+    .setDepth(200)
     .on('pointerdown', () => this.switchTab('sell'));
 
     this.tabButtons.push(buyTab, sellTab);
@@ -543,19 +649,42 @@ export class MarketplaceScene extends Phaser.Scene {
   }
 
   private showMessage(text: string, color: string) {
-    const message = this.add.text(208, 60, text, {
-      fontSize: '12px',
-      color: color,
-      backgroundColor: '#000000',
-      padding: { x: 8, y: 4 }
-    }).setOrigin(0.5);
+    // Enhanced message with professional styling
+    const messageBg = this.add.graphics();
+    messageBg.fillStyle(0x000000, 0.9);
+    messageBg.fillRoundedRect(58, 50, 300, 30, 15);
+    messageBg.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 1);
+    messageBg.strokeRoundedRect(58, 50, 300, 30, 15);
+    messageBg.setDepth(300);
 
-    // Fade out after 3 seconds
+    const message = this.add.text(208, 65, text, {
+      fontSize: '11px',
+      color: color,
+      fontFamily: 'Arial'
+    }).setOrigin(0.5).setDepth(300);
+
+    // Entrance animation
+    messageBg.setScale(0);
+    message.setScale(0);
+    
     this.tweens.add({
-      targets: message,
-      alpha: 0,
-      duration: 3000,
-      onComplete: () => message.destroy()
+      targets: [messageBg, message],
+      scale: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        // Fade out after 3 seconds
+        this.tweens.add({
+          targets: [messageBg, message],
+          alpha: 0,
+          duration: 3000,
+          delay: 3000,
+          onComplete: () => {
+            messageBg.destroy();
+            message.destroy();
+          }
+        });
+      }
     });
   }
 

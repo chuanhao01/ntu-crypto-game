@@ -13,6 +13,10 @@ export class PackScene extends Phaser.Scene {
   private goldText?: Phaser.GameObjects.Text;
   private packCost: number = 5;
   private backButton?: Phaser.GameObjects.Text;
+  private openPackButtonContainer?: Phaser.GameObjects.Container;
+
+  // Add property for storing mask shape
+  private maskShape?: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: 'PackScene' });
@@ -79,168 +83,183 @@ export class PackScene extends Phaser.Scene {
     // Create animations for all sprite types
     this.createAnimations();
 
-    // Add back button at top left (matching battle screen) - store reference
-    this.backButton = this.add.text(20, 20, 'Back', {
-      color: '#ffffff',
-      backgroundColor: '#4A5568',
-      padding: { x: 10, y: 5 },
-      fontSize: '16px'
-    })
-    .setInteractive()
-    .setOrigin(0)
-    .on('pointerdown', () => this.scene.start('HomeScene'));
+    // Create professional background
+    this.createBackground();
 
-    // Gold display at top right
-    this.goldText = this.add.text(396, 20, `Gold: ${GameState.getInstance().getGold()}`, {
-      fontSize: '16px',
-      color: '#FFD700'
-    }).setOrigin(1, 0);
+    // Add styled back button
+    this.createBackButton();
 
-    // Title - shifted down to make room for back button
-    this.add.text(208, 70, 'Pack Opening', {
-      fontSize: '32px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    // Gold display with frame
+    this.createGoldDisplay();
 
-    // Create spinning area background - shifted down
-    const spinningArea = this.add.rectangle(208, 220, 380, 100, 0x1a1a1a)
-      .setStrokeStyle(2, 0x4A5568);
+    // Styled title
+    this.createTitle();
 
-    // Create mask for the spinning area (invisible) - shifted down
-    const maskShape = this.add.graphics()
-      .fillStyle(0xffffff)
-      .fillRect(20, 170, 376, 100) // Match the exact size and position
-      .setVisible(false); // Hide the white rectangle
-    
-    const mask = maskShape.createGeometryMask();
-
-    // Create selection marker - shifted down
-    this.selectionArrow = this.add.triangle(217, 180, 0, 20, 10, 0, -10, 0, 0xffffff)
-      .setDepth(2);
+    // Create spinning area background with glow
+    this.createSpinningArea();
 
     // Create items for the wheel
     this.createItems();
 
-    // Apply mask to all wheel items
-    this.items.forEach(item => {
-      item.setMask(mask);
-    });
-
-    // Open Pack button with cost - shifted down
-    this.openPackButton = this.add.text(208, 320, `Open Pack (${this.packCost} Gold)`, {
-      color: '#ffffff',
-      backgroundColor: '#4A5568',
-      padding: { x: 20, y: 10 },
-      fontSize: '20px'
-    })
-    .setInteractive()
-    .setOrigin(0.5)
-    .on('pointerdown', () => this.tryStartSpin());
+    // Open Pack button with professional styling
+    this.createOpenPackButton();
 
     this.updatePackButton();
   }
 
-  // Add proper cleanup when leaving the scene
-  shutdown() {
-    // Clean up any running animations or timers
-    this.items.forEach(item => item.destroy());
-    this.items = [];
-    
-    if (this.popupContainer) {
-      this.popupContainer.destroy();
-      this.popupContainer = undefined;
+  private createBackground() {
+    // Professional gradient background
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x1a1a2e, 1);
+    graphics.fillRect(0, 0, 416, 662);
+
+    // Add decorative stars
+    const stars = this.add.graphics();
+    stars.fillStyle(0xffffff, 0.6);
+    for (let i = 0; i < 30; i++) {
+      const x = Math.random() * 416;
+      const y = Math.random() * 200;
+      const size = Math.random() * 1.5 + 0.5;
+      stars.fillCircle(x, y, size);
     }
-    
-    // Reset flags
-    this.isSpinning = false;
-    this.selectedItem = undefined;
-    this.selectedCharacter = undefined;
-  }
 
-  private tryStartSpin() {
-    console.log('tryStartSpin called, isSpinning:', this.isSpinning, 'popupContainer:', !!this.popupContainer); // Debug log
-    
-    const gameState = GameState.getInstance();
-    
-    if (gameState.getGold() >= this.packCost) {
-      if (gameState.spendGold(this.packCost)) {
-        this.updateGoldDisplay();
-        this.updatePackButton();
-        this.startSpin();
-      }
-    } else {
-      // Show insufficient funds message
-      this.showInsufficientFundsMessage();
-    }
-  }
-
-  private showInsufficientFundsMessage() {
-    const message = this.add.text(208, 380, 'Insufficient Gold!', {
-      fontSize: '18px',
-      color: '#ff0000'
-    }).setOrigin(0.5);
-
-    // Remove message after 2 seconds
-    this.time.delayedCall(2000, () => {
-      message.destroy();
+    // Animate stars
+    this.tweens.add({
+      targets: stars,
+      alpha: 0.3,
+      duration: 3000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
   }
 
-  private createAnimations() {
-    const characterManager = CharacterManager.getInstance();
-    
-    if (characterManager.isCharactersLoaded()) {
-      const spriteSets = characterManager.getUniqueSpriteSets();
-      
-      spriteSets.forEach(spriteSet => {
-        // Create animations for each sprite type
-        const spriteTypes = ['default', 'battle-left', 'battle-right', 'spinning'];
-        
-        spriteTypes.forEach(type => {
-          const animKey = `${spriteSet}-${type}-anim`;
-          const spriteKey = `${spriteSet}-${type}`;
-          
-          if (!this.anims.exists(animKey) && this.textures.exists(spriteKey)) {
-            const frameCount = type === 'spinning' ? 8 : 4;
-            const frameRate = type === 'spinning' ? 12 : (type.includes('battle') ? 6 : 8);
-            
-            this.anims.create({
-              key: animKey,
-              frames: this.anims.generateFrameNumbers(spriteKey, { start: 0, end: frameCount - 1 }),
-              frameRate: frameRate,
-              repeat: -1
-            });
-          }
-        });
-      });
-    } else {
-      // Fallback animations
-      this.createFallbackAnimations();
-    }
+  private createBackButton() {
+    const backButtonBg = this.add.graphics();
+    backButtonBg.fillStyle(0x4A5568, 0.9);
+    backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+    backButtonBg.lineStyle(2, 0x60A5FA, 0.8);
+    backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+
+    this.backButton = this.add.text(50, 27, '← Back', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
+    })
+    .setOrigin(0.5)
+    .setInteractive()
+    .on('pointerdown', () => this.scene.start('HomeScene'))
+    .on('pointerover', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0x60A5FA, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0x60A5FA, 1);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    })
+    .on('pointerout', () => {
+      backButtonBg.clear();
+      backButtonBg.fillStyle(0x4A5568, 0.9);
+      backButtonBg.fillRoundedRect(10, 10, 80, 35, 8);
+      backButtonBg.lineStyle(2, 0x60A5FA, 0.8);
+      backButtonBg.strokeRoundedRect(10, 10, 80, 35, 8);
+    });
   }
 
-  private createFallbackAnimations() {
-    // Create fallback animations for hero and monster
-    const fallbackAnims = [
-      { key: 'hero-default-anim', sprite: 'hero-default', frames: 4, rate: 8 },
-      { key: 'hero-spinning-anim', sprite: 'hero-spinning', frames: 8, rate: 12 },
-      { key: 'hero-battle-left-anim', sprite: 'hero-battle-left', frames: 4, rate: 6 },
-      { key: 'hero-battle-right-anim', sprite: 'hero-battle-right', frames: 4, rate: 6 },
-      { key: 'monster-default-anim', sprite: 'monster-default', frames: 4, rate: 8 },
-      { key: 'monster-spinning-anim', sprite: 'monster-spinning', frames: 8, rate: 12 },
-      { key: 'monster-battle-left-anim', sprite: 'monster-battle-left', frames: 4, rate: 6 },
-      { key: 'monster-battle-right-anim', sprite: 'monster-battle-right', frames: 4, rate: 6 }
-    ];
+  private createGoldDisplay() {
+    // Gold frame with professional styling
+    const goldFrame = this.add.graphics();
+    goldFrame.fillStyle(0x000000, 0.8);
+    goldFrame.fillRoundedRect(280, 15, 130, 30, 15);
+    goldFrame.lineStyle(2, 0xFFD700, 1);
+    goldFrame.strokeRoundedRect(280, 15, 130, 30, 15);
 
-    fallbackAnims.forEach(anim => {
-      if (!this.anims.exists(anim.key)) {
-        this.anims.create({
-          key: anim.key,
-          frames: this.anims.generateFrameNumbers(anim.sprite, { start: 0, end: anim.frames - 1 }),
-          frameRate: anim.rate,
-          repeat: -1
-        });
-      }
+    // Gold icon with glow effect
+    const goldIcon = this.add.text(295, 30, '💰', {
+      fontSize: '16px'
+    }).setOrigin(0, 0.5);
+
+    this.goldText = this.add.text(320, 30, `${GameState.getInstance().getGold()}`, {
+      fontSize: '14px',
+      color: '#FFD700',
+      fontFamily: 'Arial'
+    }).setOrigin(0, 0.5);
+
+    // Add glow effect to gold text
+    this.tweens.add({
+      targets: this.goldText,
+      alpha: 0.7,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private createTitle() {
+    // Title with shadow and glow
+    const titleShadow = this.add.text(210, 72, '🎁 PACK OPENING 🎁', {
+      fontSize: '22px',
+      color: '#000000',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5).setAlpha(0.3);
+
+    const titleText = this.add.text(208, 70, '🎁 PACK OPENING 🎁', {
+      fontSize: '22px',
+      color: '#60A5FA',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Subtitle
+    this.add.text(208, 95, 'Discover Amazing Characters', {
+      fontSize: '10px',
+      color: '#CCCCCC',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Pulsing effect
+    this.tweens.add({
+      targets: titleText,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 2500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  private createSpinningArea() {
+    // Enhanced spinning area with glow
+    const spinningAreaBg = this.add.graphics();
+    spinningAreaBg.fillStyle(0x1a1a1a, 0.9);
+    spinningAreaBg.fillRoundedRect(18, 170, 380, 100, 10);
+    spinningAreaBg.lineStyle(3, 0x60A5FA, 0.8);
+    spinningAreaBg.strokeRoundedRect(18, 170, 380, 100, 10);
+
+    // Add inner glow effect
+    const innerGlow = this.add.graphics();
+    innerGlow.fillStyle(0x60A5FA, 0.1);
+    innerGlow.fillRoundedRect(28, 180, 360, 80, 8);
+
+    // Create mask for the spinning area - store it for later use
+    this.maskShape = this.add.graphics()
+      .fillStyle(0xffffff)
+      .fillRoundedRect(20, 172, 376, 96, 8)
+      .setVisible(false);
+
+    // Enhanced selection marker
+    this.selectionArrow = this.add.triangle(217, 175, 0, 15, 8, 0, -8, 0, 0x60A5FA)
+      .setDepth(2)
+      .setAlpha(0.9);
+
+    // Animate selection arrow
+    this.tweens.add({
+      targets: this.selectionArrow,
+      y: 170,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
   }
 
@@ -258,11 +277,18 @@ export class PackScene extends Phaser.Scene {
       const container = this.createItemContainer(randomChar, i * 100 + 600);
       this.items.push(container);
     }
+
+    // Apply mask to all items after they're created
+    this.applyMaskToItems();
   }
 
-  private getRandomCharacter(characters: any[]): any {
-    // This method is now handled by CharacterManager
-    return CharacterManager.getInstance().getRandomCharacter();
+  private applyMaskToItems() {
+    if (this.maskShape && this.items.length > 0) {
+      const mask = this.maskShape.createGeometryMask();
+      this.items.forEach(item => {
+        item.setMask(mask);
+      });
+    }
   }
 
   private createItemContainer(char: any, x: number): Phaser.GameObjects.Container {
@@ -533,17 +559,7 @@ export class PackScene extends Phaser.Scene {
     // Create new randomized items
     this.createItems();
 
-    // Apply mask to new items
-    const maskShape = this.children.list.find(child => 
-      child instanceof Phaser.GameObjects.Graphics
-    ) as Phaser.GameObjects.Graphics;
-    
-    if (maskShape) {
-      const mask = maskShape.createGeometryMask();
-      this.items.forEach(item => {
-        item.setMask(mask);
-      });
-    }
+    // Mask is automatically applied in createItems()
   }
 
   private resetWheel() {
@@ -560,9 +576,200 @@ export class PackScene extends Phaser.Scene {
   }
 
   private updatePackButton() {
-    if (this.openPackButton) {
+    if (this.openPackButtonContainer) {
       const canAfford = GameState.getInstance().getGold() >= this.packCost;
-      this.openPackButton.setAlpha(canAfford ? 1 : 0.5);
+      this.openPackButtonContainer.setAlpha(canAfford ? 1 : 0.5);
+      
+      if (canAfford) {
+        this.openPackButtonContainer.setInteractive();
+      } else {
+        this.openPackButtonContainer.removeInteractive();
+      }
     }
+  }
+
+  private createOpenPackButton() {
+    const buttonContainer = this.add.container(208, 320);
+
+    // Button background with gradient effect
+    const buttonBg = this.add.graphics();
+    buttonBg.fillStyle(0x4A5568, 0.9);
+    buttonBg.fillRoundedRect(-100, -20, 200, 40, 20);
+    buttonBg.lineStyle(3, 0x60A5FA, 0.8);
+    buttonBg.strokeRoundedRect(-100, -20, 200, 40, 20);
+
+    this.openPackButton = this.add.text(0, 0, `🎁 Open Pack (${this.packCost} Gold)`, {
+      fontSize: '16px',
+      color: '#ffffff',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    buttonContainer.add([buttonBg, this.openPackButton]);
+    buttonContainer.setSize(200, 40);
+    buttonContainer.setInteractive();
+
+    // Enhanced hover effects
+    buttonContainer.on('pointerover', () => {
+      buttonBg.clear();
+      buttonBg.fillStyle(0x60A5FA, 0.9);
+      buttonBg.fillRoundedRect(-100, -20, 200, 40, 20);
+      buttonBg.lineStyle(3, 0xffffff, 1);
+      buttonBg.strokeRoundedRect(-100, -20, 200, 40, 20);
+      
+      this.tweens.add({
+        targets: buttonContainer,
+        scaleX: 1.05,
+        scaleY: 1.05,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+    });
+
+    buttonContainer.on('pointerout', () => {
+      buttonBg.clear();
+      buttonBg.fillStyle(0x4A5568, 0.9);
+      buttonBg.fillRoundedRect(-100, -20, 200, 40, 20);
+      buttonBg.lineStyle(3, 0x60A5FA, 0.8);
+      buttonBg.strokeRoundedRect(-100, -20, 200, 40, 20);
+      
+      this.tweens.add({
+        targets: buttonContainer,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+    });
+
+    buttonContainer.on('pointerdown', () => {
+      this.tweens.add({
+        targets: buttonContainer,
+        scaleX: 0.95,
+        scaleY: 0.95,
+        duration: 100,
+        yoyo: true,
+        onComplete: () => this.tryStartSpin()
+      });
+    });
+
+    // Store reference for later use
+    this.openPackButtonContainer = buttonContainer;
+  }
+
+  private tryStartSpin() {
+    console.log('tryStartSpin called, isSpinning:', this.isSpinning, 'popupContainer:', !!this.popupContainer);
+    
+    const gameState = GameState.getInstance();
+    
+    if (gameState.getGold() >= this.packCost) {
+      if (gameState.spendGold(this.packCost)) {
+        this.updateGoldDisplay();
+        this.updatePackButton();
+        this.startSpin();
+      }
+    } else {
+      // Show insufficient funds message
+      this.showInsufficientFundsMessage();
+    }
+  }
+
+  private showInsufficientFundsMessage() {
+    const messageBg = this.add.graphics();
+    messageBg.fillStyle(0x000000, 0.8);
+    messageBg.fillRoundedRect(108, 365, 200, 30, 15);
+    messageBg.lineStyle(2, 0xff4444, 1);
+    messageBg.strokeRoundedRect(108, 365, 200, 30, 15);
+
+    const message = this.add.text(208, 380, 'Insufficient Gold!', {
+      fontSize: '14px',
+      color: '#ff4444',
+      fontFamily: 'Arial'
+    }).setOrigin(0.5);
+
+    // Fade out after 2 seconds
+    this.tweens.add({
+      targets: [messageBg, message],
+      alpha: 0,
+      duration: 2000,
+      onComplete: () => {
+        messageBg.destroy();
+        message.destroy();
+      }
+    });
+  }
+
+  private createAnimations() {
+    const characterManager = CharacterManager.getInstance();
+    
+    if (characterManager.isCharactersLoaded()) {
+      const spriteSets = characterManager.getUniqueSpriteSets();
+      
+      spriteSets.forEach(spriteSet => {
+        // Create animations for each sprite type
+        const spriteTypes = ['default', 'battle-left', 'battle-right', 'spinning'];
+        
+        spriteTypes.forEach(type => {
+          const animKey = `${spriteSet}-${type}-anim`;
+          const spriteKey = `${spriteSet}-${type}`;
+          
+          if (!this.anims.exists(animKey) && this.textures.exists(spriteKey)) {
+            const frameCount = type === 'spinning' ? 8 : 4;
+            const frameRate = type === 'spinning' ? 12 : (type.includes('battle') ? 6 : 8);
+            
+            this.anims.create({
+              key: animKey,
+              frames: this.anims.generateFrameNumbers(spriteKey, { start: 0, end: frameCount - 1 }),
+              frameRate: frameRate,
+              repeat: -1
+            });
+          }
+        });
+      });
+    } else {
+      // Fallback animations
+      this.createFallbackAnimations();
+    }
+  }
+
+  private createFallbackAnimations() {
+    // Create fallback animations for hero and monster
+    const fallbackAnims = [
+      { key: 'hero-default-anim', sprite: 'hero-default', frames: 4, rate: 8 },
+      { key: 'hero-spinning-anim', sprite: 'hero-spinning', frames: 8, rate: 12 },
+      { key: 'hero-battle-left-anim', sprite: 'hero-battle-left', frames: 4, rate: 6 },
+      { key: 'hero-battle-right-anim', sprite: 'hero-battle-right', frames: 4, rate: 6 },
+      { key: 'monster-default-anim', sprite: 'monster-default', frames: 4, rate: 8 },
+      { key: 'monster-spinning-anim', sprite: 'monster-spinning', frames: 8, rate: 12 },
+      { key: 'monster-battle-left-anim', sprite: 'monster-battle-left', frames: 4, rate: 6 },
+      { key: 'monster-battle-right-anim', sprite: 'monster-battle-right', frames: 4, rate: 6 }
+    ];
+
+    fallbackAnims.forEach(anim => {
+      if (!this.anims.exists(anim.key)) {
+        this.anims.create({
+          key: anim.key,
+          frames: this.anims.generateFrameNumbers(anim.sprite, { start: 0, end: anim.frames - 1 }),
+          frameRate: anim.rate,
+          repeat: -1
+        });
+      }
+    });
+  }
+
+  // Add proper cleanup when leaving the scene
+  shutdown() {
+    // Clean up any running animations or timers
+    this.items.forEach(item => item.destroy());
+    this.items = [];
+    
+    if (this.popupContainer) {
+      this.popupContainer.destroy();
+      this.popupContainer = undefined;
+    }
+    
+    // Reset flags
+    this.isSpinning = false;
+    this.selectedItem = undefined;
+    this.selectedCharacter = undefined;
   }
 }
