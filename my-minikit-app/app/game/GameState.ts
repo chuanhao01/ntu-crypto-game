@@ -62,6 +62,33 @@ export class GameState {
       const existing = this.collection.get(characterId)!;
       existing.count++;
     } else {
+      // Handle both stat formats: {hp, attack, defense} and {base_hp, base_attack, base_defense}
+      let stats = { hp: 100, attack: 10, defense: 5 }; // Default values
+      
+      if (character.stats) {
+        if (character.stats.hp !== undefined) {
+          // Standard format: hp, attack, defense
+          stats = {
+            hp: character.stats.hp,
+            attack: character.stats.attack,
+            defense: character.stats.defense
+          };
+        } else if (character.stats.base_hp !== undefined) {
+          // Database format: base_hp, base_attack, base_defense
+          stats = {
+            hp: character.stats.base_hp,
+            attack: character.stats.base_attack,
+            defense: character.stats.base_defense
+          };
+        }
+      }
+      
+      // Ensure moves exist
+      const moves = character.moves || character.abilities || [
+        { name: 'Basic Attack', damage: 15, description: 'A basic attack' },
+        { name: 'Power Strike', damage: 20, description: 'A stronger attack' }
+      ];
+
       const collectedChar: CollectedCharacter = {
         id: characterId,
         originalId: character.originalId || character.id,
@@ -70,9 +97,16 @@ export class GameState {
         sprites: character.sprites,
         obtainedAt: new Date(),
         count: 1,
-        stats: character.stats,
-        moves: character.moves || []
+        stats: stats,  // Always use the hp/attack/defense format
+        moves: moves
       };
+      
+      console.log(`Adding character to collection:`, {
+        name: collectedChar.name,
+        stats: collectedChar.stats,
+        moves: collectedChar.moves
+      });
+      
       this.collection.set(characterId, collectedChar);
     }
     this.autoSave();

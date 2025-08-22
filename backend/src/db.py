@@ -1,4 +1,5 @@
 import sqlite3
+import json
 from dataclasses import dataclass
 from src.crypto import HashedPassword
 from src.consts import DB_FILE_PATH
@@ -165,12 +166,20 @@ class Character:
     base_defense: int
 
 def create_characters_table():
-    """Initialize the characters table with moves stored as JSON"""
+    """Initialize the characters table with default characters"""
     try:
         with sqlite3.connect(DB_FILE_PATH) as conn:
             cursor = conn.cursor()
             
-            # Create characters table with moves as JSON
+            # Check if moves column exists, if not add it
+            cursor.execute("PRAGMA table_info(characters)")
+            columns = [column[1] for column in cursor.fetchall()]
+            
+            if 'moves' not in columns:
+                print("Adding moves column to characters table...")
+                cursor.execute('ALTER TABLE characters ADD COLUMN moves TEXT')
+            
+            # Create characters table if it doesn't exist
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS characters (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -181,212 +190,57 @@ def create_characters_table():
                     base_hp INTEGER NOT NULL,
                     base_attack INTEGER NOT NULL,
                     base_defense INTEGER NOT NULL,
-                    moves TEXT NOT NULL DEFAULT '[]'
+                    moves TEXT DEFAULT '[]'
                 )
             ''')
             
             # Check if characters already exist
             cursor.execute('SELECT COUNT(*) FROM characters')
             if cursor.fetchone()[0] == 0:
-                # Insert diverse characters with different types and their moves as JSON
-                import json
-                
+                # Insert default characters with moves
                 default_characters = [
-                    # Heroes
-                    ('Knight Valor', 'common', 'hero', 'hero', 90, 12, 10, 
-                     json.dumps([
-                         {'name': 'Slash', 'damage': 15, 'description': 'A quick sword strike'},
-                         {'name': 'Shield Bash', 'damage': 12, 'description': 'Strike with shield'},
-                         {'name': 'Heroic Strike', 'damage': 18, 'description': 'Powerful heroic attack'}
-                     ])),
-                    ('Paladin Light', 'rare', 'hero', 'hero', 110, 15, 12,
-                     json.dumps([
-                         {'name': 'Slash', 'damage': 18, 'description': 'A quick sword strike'},
-                         {'name': 'Shield Bash', 'damage': 15, 'description': 'Strike with shield'},
-                         {'name': 'Heroic Strike', 'damage': 22, 'description': 'Powerful heroic attack'}
-                     ])),
-                    ('Champion Divine', 'epic', 'hero', 'hero', 140, 20, 17,
-                     json.dumps([
-                         {'name': 'Slash', 'damage': 22, 'description': 'A quick sword strike'},
-                         {'name': 'Shield Bash', 'damage': 18, 'description': 'Strike with shield'},
-                         {'name': 'Heroic Strike', 'damage': 28, 'description': 'Powerful heroic attack'}
-                     ])),
-                    ('Legendary Guardian', 'legendary', 'hero', 'hero', 190, 28, 24,
-                     json.dumps([
-                         {'name': 'Slash', 'damage': 30, 'description': 'A quick sword strike'},
-                         {'name': 'Shield Bash', 'damage': 25, 'description': 'Strike with shield'},
-                         {'name': 'Heroic Strike', 'damage': 35, 'description': 'Powerful heroic attack'}
-                     ])),
+                    # Heroes with moves
+                    ('Knight Valor', 'common', 'hero', 'hero', 90, 12, 10, json.dumps([
+                        {"name": "Sword Strike", "damage": 15, "description": "A basic sword attack"},
+                        {"name": "Shield Bash", "damage": 12, "description": "Strike with shield"}
+                    ])),
+                    ('Paladin Light', 'rare', 'hero', 'hero', 110, 15, 12, json.dumps([
+                        {"name": "Holy Strike", "damage": 18, "description": "Blessed sword attack"},
+                        {"name": "Divine Shield", "damage": 16, "description": "Shield blessed by light"}
+                    ])),
+                    ('Champion Divine', 'epic', 'hero', 'hero', 140, 20, 17, json.dumps([
+                        {"name": "Champion's Blade", "damage": 25, "description": "Powerful sword technique"},
+                        {"name": "Divine Wrath", "damage": 28, "description": "Unleash divine power"}
+                    ])),
+                    ('Legendary Guardian', 'legendary', 'hero', 'hero', 190, 28, 24, json.dumps([
+                        {"name": "Guardian's Strike", "damage": 35, "description": "Legendary sword attack"},
+                        {"name": "Ultimate Protection", "damage": 32, "description": "Divine guardian technique"}
+                    ])),
                     
-                    # Mages
-                    ('Apprentice Mage', 'common', 'mage', 'mage', 70, 18, 8,
-                     json.dumps([
-                         {'name': 'Fireball', 'damage': 20, 'description': 'Launch a ball of fire'},
-                         {'name': 'Ice Shard', 'damage': 16, 'description': 'Sharp ice projectile'},
-                         {'name': 'Lightning Bolt', 'damage': 22, 'description': 'Electric attack'}
-                     ])),
-                    ('Fire Wizard', 'rare', 'mage', 'mage', 85, 22, 10,
-                     json.dumps([
-                         {'name': 'Fireball', 'damage': 25, 'description': 'Launch a ball of fire'},
-                         {'name': 'Ice Shard', 'damage': 20, 'description': 'Sharp ice projectile'},
-                         {'name': 'Lightning Bolt', 'damage': 28, 'description': 'Electric attack'}
-                     ])),
-                    ('Archmage', 'epic', 'mage', 'mage', 105, 28, 14,
-                     json.dumps([
-                         {'name': 'Fireball', 'damage': 32, 'description': 'Launch a ball of fire'},
-                         {'name': 'Ice Shard', 'damage': 26, 'description': 'Sharp ice projectile'},
-                         {'name': 'Lightning Bolt', 'damage': 35, 'description': 'Electric attack'}
-                     ])),
-                    ('Cosmic Sorcerer', 'legendary', 'mage', 'mage', 130, 35, 18,
-                     json.dumps([
-                         {'name': 'Fireball', 'damage': 40, 'description': 'Launch a ball of fire'},
-                         {'name': 'Ice Shard', 'damage': 32, 'description': 'Sharp ice projectile'},
-                         {'name': 'Lightning Bolt', 'damage': 45, 'description': 'Electric attack'}
-                     ])),
-                    
-                    # Archers
-                    ('Forest Ranger', 'common', 'archer', 'archer', 80, 16, 9,
-                     json.dumps([
-                         {'name': 'Precise Shot', 'damage': 18, 'description': 'Accurate arrow shot'},
-                         {'name': 'Multi-Shot', 'damage': 14, 'description': 'Fire multiple arrows'},
-                         {'name': 'Explosive Arrow', 'damage': 24, 'description': 'Arrow that explodes on impact'}
-                     ])),
-                    ('Eagle Eye', 'rare', 'archer', 'archer', 95, 20, 11,
-                     json.dumps([
-                         {'name': 'Precise Shot', 'damage': 22, 'description': 'Accurate arrow shot'},
-                         {'name': 'Multi-Shot', 'damage': 18, 'description': 'Fire multiple arrows'},
-                         {'name': 'Explosive Arrow', 'damage': 28, 'description': 'Arrow that explodes on impact'}
-                     ])),
-                    ('Master Archer', 'epic', 'archer', 'archer', 115, 26, 15,
-                     json.dumps([
-                         {'name': 'Precise Shot', 'damage': 28, 'description': 'Accurate arrow shot'},
-                         {'name': 'Multi-Shot', 'damage': 22, 'description': 'Fire multiple arrows'},
-                         {'name': 'Explosive Arrow', 'damage': 35, 'description': 'Arrow that explodes on impact'}
-                     ])),
-                    ('Legendary Marksman', 'legendary', 'archer', 'archer', 140, 32, 19,
-                     json.dumps([
-                         {'name': 'Precise Shot', 'damage': 35, 'description': 'Accurate arrow shot'},
-                         {'name': 'Multi-Shot', 'damage': 28, 'description': 'Fire multiple arrows'},
-                         {'name': 'Explosive Arrow', 'damage': 42, 'description': 'Arrow that explodes on impact'}
-                     ])),
-                    
-                    # Assassins
-                    ('Shadow Blade', 'common', 'assassin', 'assassin', 75, 20, 6,
-                     json.dumps([
-                         {'name': 'Backstab', 'damage': 25, 'description': 'Critical strike from behind'},
-                         {'name': 'Poison Blade', 'damage': 16, 'description': 'Venomous attack'},
-                         {'name': 'Shadow Strike', 'damage': 20, 'description': 'Attack from the shadows'}
-                     ])),
-                    ('Night Stalker', 'rare', 'assassin', 'assassin', 90, 25, 8,
-                     json.dumps([
-                         {'name': 'Backstab', 'damage': 30, 'description': 'Critical strike from behind'},
-                         {'name': 'Poison Blade', 'damage': 20, 'description': 'Venomous attack'},
-                         {'name': 'Shadow Strike', 'damage': 25, 'description': 'Attack from the shadows'}
-                     ])),
-                    ('Death\'s Shadow', 'epic', 'assassin', 'assassin', 110, 32, 12,
-                     json.dumps([
-                         {'name': 'Backstab', 'damage': 38, 'description': 'Critical strike from behind'},
-                         {'name': 'Poison Blade', 'damage': 26, 'description': 'Venomous attack'},
-                         {'name': 'Shadow Strike', 'damage': 32, 'description': 'Attack from the shadows'}
-                     ])),
-                    ('Phantom Assassin', 'legendary', 'assassin', 'assassin', 135, 40, 16,
-                     json.dumps([
-                         {'name': 'Backstab', 'damage': 48, 'description': 'Critical strike from behind'},
-                         {'name': 'Poison Blade', 'damage': 32, 'description': 'Venomous attack'},
-                         {'name': 'Shadow Strike', 'damage': 40, 'description': 'Attack from the shadows'}
-                     ])),
-                    
-                    # Tanks
-                    ('Iron Wall', 'common', 'tank', 'tank', 120, 10, 15,
-                     json.dumps([
-                         {'name': 'Shield Slam', 'damage': 10, 'description': 'Defensive counter-attack'},
-                         {'name': 'Taunt', 'damage': 8, 'description': 'Provoke enemy'},
-                         {'name': 'Fortress Wall', 'damage': 12, 'description': 'Protective barrier attack'}
-                     ])),
-                    ('Steel Guardian', 'rare', 'tank', 'tank', 140, 12, 18,
-                     json.dumps([
-                         {'name': 'Shield Slam', 'damage': 14, 'description': 'Defensive counter-attack'},
-                         {'name': 'Taunt', 'damage': 10, 'description': 'Provoke enemy'},
-                         {'name': 'Fortress Wall', 'damage': 16, 'description': 'Protective barrier attack'}
-                     ])),
-                    ('Fortress Defender', 'epic', 'tank', 'tank', 170, 16, 25,
-                     json.dumps([
-                         {'name': 'Shield Slam', 'damage': 18, 'description': 'Defensive counter-attack'},
-                         {'name': 'Taunt', 'damage': 14, 'description': 'Provoke enemy'},
-                         {'name': 'Fortress Wall', 'damage': 22, 'description': 'Protective barrier attack'}
-                     ])),
-                    ('Immortal Bulwark', 'legendary', 'tank', 'tank', 220, 20, 32,
-                     json.dumps([
-                         {'name': 'Shield Slam', 'damage': 24, 'description': 'Defensive counter-attack'},
-                         {'name': 'Taunt', 'damage': 18, 'description': 'Provoke enemy'},
-                         {'name': 'Fortress Wall', 'damage': 28, 'description': 'Protective barrier attack'}
-                     ])),
-                    
-                    # Healers
-                    ('Village Priest', 'common', 'healer', 'healer', 85, 8, 12,
-                     json.dumps([
-                         {'name': 'Holy Light', 'damage': 14, 'description': 'Divine healing energy as attack'},
-                         {'name': 'Purify', 'damage': 12, 'description': 'Cleansing light attack'},
-                         {'name': 'Divine Wrath', 'damage': 18, 'description': 'Righteous anger'}
-                     ])),
-                    ('Temple Cleric', 'rare', 'healer', 'healer', 100, 10, 15,
-                     json.dumps([
-                         {'name': 'Holy Light', 'damage': 18, 'description': 'Divine healing energy as attack'},
-                         {'name': 'Purify', 'damage': 15, 'description': 'Cleansing light attack'},
-                         {'name': 'Divine Wrath', 'damage': 22, 'description': 'Righteous anger'}
-                     ])),
-                    ('High Priest', 'epic', 'healer', 'healer', 125, 14, 20,
-                     json.dumps([
-                         {'name': 'Holy Light', 'damage': 24, 'description': 'Divine healing energy as attack'},
-                         {'name': 'Purify', 'damage': 20, 'description': 'Cleansing light attack'},
-                         {'name': 'Divine Wrath', 'damage': 28, 'description': 'Righteous anger'}
-                     ])),
-                    ('Divine Oracle', 'legendary', 'healer', 'healer', 160, 18, 26,
-                     json.dumps([
-                         {'name': 'Holy Light', 'damage': 30, 'description': 'Divine healing energy as attack'},
-                         {'name': 'Purify', 'damage': 25, 'description': 'Cleansing light attack'},
-                         {'name': 'Divine Wrath', 'damage': 35, 'description': 'Righteous anger'}
-                     ])),
+                    # Monsters with moves
+                    ('Shadow Beast', 'common', 'monster', 'monster', 75, 15, 6, json.dumps([
+                        {"name": "Shadow Claw", "damage": 18, "description": "Dark energy claw attack"},
+                        {"name": "Bite", "damage": 16, "description": "Vicious bite"}
+                    ])),
+                    ('Dark Fiend', 'rare', 'monster', 'monster', 95, 18, 8, json.dumps([
+                        {"name": "Dark Strike", "damage": 22, "description": "Strike infused with darkness"},
+                        {"name": "Fiend's Rage", "damage": 20, "description": "Unleash fiendish fury"}
+                    ])),
+                    ('Nightmare Demon', 'epic', 'monster', 'monster', 125, 23, 13, json.dumps([
+                        {"name": "Nightmare Slash", "damage": 28, "description": "Attack that induces fear"},
+                        {"name": "Demon's Wrath", "damage": 32, "description": "Powerful demonic attack"}
+                    ])),
+                    ('Ancient Dragon', 'legendary', 'monster', 'monster', 175, 31, 20, json.dumps([
+                        {"name": "Dragon Breath", "damage": 40, "description": "Devastating fire breath"},
+                        {"name": "Ancient Power", "damage": 38, "description": "Power of ancient dragons"}
+                    ])),
                 ]
-                
-                # Add remaining character types with similar pattern...
-                remaining_characters = [
-                    # Monsters
-                    ('Shadow Beast', 'common', 'monster', 'monster', 75, 15, 6,
-                     json.dumps([
-                         {'name': 'Claw', 'damage': 14, 'description': 'Sharp claw attack'},
-                         {'name': 'Bite', 'damage': 16, 'description': 'Vicious bite'},
-                         {'name': 'Dark Energy', 'damage': 20, 'description': 'Malevolent force'}
-                     ])),
-                    ('Dark Fiend', 'rare', 'monster', 'monster', 95, 18, 8,
-                     json.dumps([
-                         {'name': 'Claw', 'damage': 18, 'description': 'Sharp claw attack'},
-                         {'name': 'Bite', 'damage': 20, 'description': 'Vicious bite'},
-                         {'name': 'Dark Energy', 'damage': 24, 'description': 'Malevolent force'}
-                     ])),
-                    ('Nightmare Demon', 'epic', 'monster', 'monster', 125, 23, 13,
-                     json.dumps([
-                         {'name': 'Claw', 'damage': 24, 'description': 'Sharp claw attack'},
-                         {'name': 'Bite', 'damage': 26, 'description': 'Vicious bite'},
-                         {'name': 'Dark Energy', 'damage': 30, 'description': 'Malevolent force'}
-                     ])),
-                    
-                    # Add other character types with JSON moves...
-                    ('Ancient Dragon', 'legendary', 'dragon', 'dragon', 220, 38, 25,
-                     json.dumps([
-                         {'name': 'Dragon Breath', 'damage': 45, 'description': 'Powerful breath weapon'},
-                         {'name': 'Tail Sweep', 'damage': 35, 'description': 'Sweeping tail attack'},
-                         {'name': 'Wing Buffet', 'damage': 30, 'description': 'Powerful wing strike'}
-                     ])),
-                ]
-                
-                all_characters = default_characters + remaining_characters
                 
                 cursor.executemany('''
                     INSERT INTO characters (name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense, moves)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', all_characters)
-                
+                ''', default_characters)
+            
             conn.commit()
             return True
             
@@ -394,14 +248,45 @@ def create_characters_table():
         print(f"Database error in create_characters_table: {e}")
         return False
 
-def get_all_characters() -> list[dict]:
-    """Get all available characters from the database with moves parsed from JSON"""
+def add_character_to_database(character_data: dict) -> int:
+    """Add a new character to the database and return its ID"""
+    try:
+        with sqlite3.connect(DB_FILE_PATH) as conn:
+            cursor = conn.cursor()
+            
+            # Convert moves to JSON string if they exist
+            moves_json = json.dumps(character_data.get('moves', []))
+            
+            cursor.execute('''
+                INSERT INTO characters (name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense, moves)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                character_data['name'],
+                character_data['rarity'],
+                character_data.get('character_type', 'hero'),
+                character_data['sprite_set'],
+                character_data['stats']['base_hp'],
+                character_data['stats']['base_attack'],
+                character_data['stats']['base_defense'],
+                moves_json
+            ))
+            
+            character_id = cursor.lastrowid
+            conn.commit()
+            return character_id
+            
+    except Exception as e:
+        print(f"Database error in add_character_to_database: {e}")
+        return None
+
+def get_all_characters() -> list:
+    """Get all available characters from the database"""
     try:
         with sqlite3.connect(DB_FILE_PATH) as conn:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT id, name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense, moves
+                SELECT id, name, rarity, character_type, sprite_set, base_hp, base_attack, base_defense, moves 
                 FROM characters
             ''')
             
@@ -409,8 +294,14 @@ def get_all_characters() -> list[dict]:
             characters = []
             
             for row in rows:
-                import json
-                moves = json.loads(row[8]) if row[8] else []
+                # Parse moves from JSON string
+                moves = []
+                if row[8]:  # moves column
+                    try:
+                        moves = json.loads(row[8])
+                    except json.JSONDecodeError:
+                        print(f"Failed to parse moves for character {row[1]}")
+                        moves = []
                 
                 character = {
                     "id": row[0],
@@ -430,3 +321,75 @@ def get_all_characters() -> list[dict]:
     except Exception as e:
         print(f"Database error in get_all_characters: {e}")
         return []
+
+def get_user_collection_character(user_id: int, character_key: str) -> dict | None:
+    """Get a specific character from user's collection"""
+    try:
+        game_data = load_user_game_data(user_id)
+        if not game_data:
+            return None
+            
+        collection = game_data.get('collection', [])
+        
+        for key, char_data in collection:
+            if key == character_key:
+                return char_data
+        
+        return None
+        
+    except Exception as e:
+        print(f"Database error in get_user_collection_character: {e}")
+        return None
+
+def update_user_collection_character(user_id: int, character_key: str, new_count: int) -> bool:
+    """Update character count in user's collection or remove if count becomes 0"""
+    try:
+        game_data = load_user_game_data(user_id)
+        if not game_data:
+            return False
+        
+        collection = game_data.get('collection', [])
+        updated_collection = []
+        character_found = False
+        
+        for key, char_data in collection:
+            if key == character_key:
+                character_found = True
+                if new_count > 0:
+                    char_data['count'] = new_count
+                    updated_collection.append([key, char_data])
+                # If new_count is 0, don't add it back (effectively removing it)
+            else:
+                updated_collection.append([key, char_data])
+        
+        if not character_found:
+            return False
+        
+        # Update the game data
+        game_data['collection'] = updated_collection
+        return save_user_game_data(user_id, game_data)
+        
+    except Exception as e:
+        print(f"Database error in update_user_collection_character: {e}")
+        return False
+
+def add_character_to_user_collection(user_id: int, character_data: dict) -> bool:
+    """Add a new character to user's collection"""
+    try:
+        game_data = load_user_game_data(user_id)
+        if not game_data:
+            return False
+        
+        collection = game_data.get('collection', [])
+        
+        # Create the character entry
+        character_key = f"{character_data['name']}-{character_data['rarity']}"
+        collection.append([character_key, character_data])
+        
+        # Update the game data
+        game_data['collection'] = collection
+        return save_user_game_data(user_id, game_data)
+        
+    except Exception as e:
+        print(f"Database error in add_character_to_user_collection: {e}")
+        return False

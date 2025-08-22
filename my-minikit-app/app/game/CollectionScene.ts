@@ -578,45 +578,56 @@ export class CollectionScene extends Phaser.Scene {
     // Character sprite (larger) - moved up 5px
     const characterSprite = this.add.sprite(0, -180, character.sprites.default)
       .setScale(2.0);
-    characterSprite.play(character.sprites.default + '-anim');
+    
+    const animKey = character.sprites.default + '-anim';
+    if (this.anims.exists(animKey)) {
+      characterSprite.play(animKey);
+    }
 
     // Character name - moved up 5px
     const characterName = this.add.text(0, -110, character.name, {
       fontSize: '24px',
-      color: '#ffffff'
+      color: '#ffffff',
+      fontFamily: 'Arial'
     }).setOrigin(0.5);
 
     // Rarity text - moved up 5px
     const rarityText = this.add.text(0, -85, character.rarity.toUpperCase(), {
       fontSize: '16px',
-      color: `#${bgColor.toString(16).padStart(6, '0')}`
+      color: `#${bgColor.toString(16).padStart(6, '0')}`,
+      fontFamily: 'Arial'
     }).setOrigin(0.5);
 
     // Stats section - moved up 5px
     const statsTitle = this.add.text(-150, -55, 'STATS:', {
       fontSize: '16px',
-      color: '#ffffff'
+      color: '#ffffff',
+      fontFamily: 'Arial'
     });
 
     const hpText = this.add.text(-150, -35, `HP: ${character.stats.hp}`, {
       fontSize: '14px',
-      color: '#ff4444'
+      color: '#ff4444',
+      fontFamily: 'Arial'
     });
 
     const attackText = this.add.text(-150, -15, `Attack: ${character.stats.attack}`, {
       fontSize: '14px',
-      color: '#ffaa00'
+      color: '#ffaa00',
+      fontFamily: 'Arial'
     });
 
     const defenseText = this.add.text(-150, 5, `Defense: ${character.stats.defense}`, {
       fontSize: '14px',
-      color: '#4444ff'
+      color: '#4444ff',
+      fontFamily: 'Arial'
     });
 
     // Moves section - moved up 5px
     const movesTitle = this.add.text(-150, 35, 'MOVES:', {
       fontSize: '16px',
-      color: '#ffffff'
+      color: '#ffffff',
+      fontFamily: 'Arial'
     });
 
     const moveTexts: Phaser.GameObjects.Text[] = [];
@@ -625,17 +636,20 @@ export class CollectionScene extends Phaser.Scene {
       
       const moveText = this.add.text(-150, yOffset, `${move.name}`, {
         fontSize: '14px',
-        color: '#00ff88'
+        color: '#00ff88',
+        fontFamily: 'Arial'
       });
 
       const damageText = this.add.text(-150, yOffset + 15, `Damage: ${move.damage}`, {
         fontSize: '12px',
-        color: '#cccccc'
+        color: '#cccccc',
+        fontFamily: 'Arial'
       });
 
       const descText = this.add.text(-150, yOffset + 30, move.description, {
         fontSize: '10px',
         color: '#888888',
+        fontFamily: 'Arial',
         wordWrap: { width: 280 }
       });
 
@@ -647,7 +661,8 @@ export class CollectionScene extends Phaser.Scene {
       fontSize: '24px',
       color: '#ffffff',
       backgroundColor: '#ff4444',
-      padding: { x: 8, y: 4 }
+      padding: { x: 8, y: 4 },
+      fontFamily: 'Arial'
     })
     .setInteractive()
     .on('pointerdown', () => this.closeCharacterDetails());

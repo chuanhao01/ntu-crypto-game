@@ -172,7 +172,20 @@ export class BattleScene extends Phaser.Scene {
     this.attackButtons.forEach(button => button.destroy());
     this.attackButtons = [];
 
-    if (!this.currentPlayerCharacter.moves) return;
+    // Ensure character has moves
+    if (!this.currentPlayerCharacter || !this.currentPlayerCharacter.moves || this.currentPlayerCharacter.moves.length === 0) {
+      console.error('Current character has no moves:', this.currentPlayerCharacter);
+      
+      // Add default moves if missing
+      if (this.currentPlayerCharacter) {
+        this.currentPlayerCharacter.moves = [
+          { name: 'Basic Attack', damage: 15, description: 'A basic attack' },
+          { name: 'Power Strike', damage: 20, description: 'A stronger attack' }
+        ];
+      } else {
+        return;
+      }
+    }
 
     // Layout moves in a 2x2 grid covering most of the horizontal space
     const buttonWidth = 180;
@@ -191,7 +204,7 @@ export class BattleScene extends Phaser.Scene {
       const x = startX + col * (buttonWidth + horizontalSpacing);
       const y = startY + row * (buttonHeight + verticalSpacing);
       
-      const button = this.add.text(x, y, move.name, {
+      const button = this.add.text(x, y, move.name || 'Unknown Move', {
         backgroundColor: '#4A5568',
         padding: { x: 15, y: 8 },
         color: '#ffffff',
@@ -213,9 +226,17 @@ export class BattleScene extends Phaser.Scene {
     this.isAnimating = true;
     this.battlePhase = 'animating';
 
-    // Calculate damage
-    const attackPower = this.currentPlayerCharacter.stats.attack;
-    const damage = Math.max(1, attackPower + move.damage - this.currentEnemyCharacter.defense);
+    // Ensure move has damage
+    const moveDamage = move.damage || 10;
+    
+    // Calculate damage with proper null checks
+    const attackPower = (this.currentPlayerCharacter.stats && this.currentPlayerCharacter.stats.attack) 
+      ? this.currentPlayerCharacter.stats.attack 
+      : 10;
+      
+    const damage = Math.max(1, attackPower + moveDamage - this.currentEnemyCharacter.defense);
+    
+    console.log(`${this.currentPlayerCharacter.name} uses ${move.name} for ${damage} damage`);
     
     this.currentEnemyCharacter.hp = Math.max(0, this.currentEnemyCharacter.hp - damage);
 
@@ -528,19 +549,23 @@ export class BattleScene extends Phaser.Scene {
 
   private updateUI() {
     // Update character name
-    if (this.playerNameText) {
-      this.playerNameText.setText(this.currentPlayerCharacter.name);
+    if (this.playerNameText && this.currentPlayerCharacter) {
+      this.playerNameText.setText(this.currentPlayerCharacter.name || 'Unknown Character');
     }
 
-    // Update HP bar
-    if (this.playerHPText) {
-      this.playerHPText.setText(`${this.currentPlayerCharacter.hp}/${this.currentPlayerCharacter.maxHp || this.currentPlayerCharacter.stats.hp}`);
+    // Update HP bar with proper null checks
+    if (this.playerHPText && this.currentPlayerCharacter) {
+      const currentHp = this.currentPlayerCharacter.hp || 0;
+      const maxHp = this.currentPlayerCharacter.maxHp || this.currentPlayerCharacter.stats?.hp || 100;
+      this.playerHPText.setText(`${currentHp}/${maxHp}`);
     }
 
     // Update HP bar visual
-    if (this.playerHPBar) {
-      const maxHp = this.currentPlayerCharacter.maxHp || this.currentPlayerCharacter.stats.hp;
-      const hpPercent = this.currentPlayerCharacter.hp / maxHp;
+    if (this.playerHPBar && this.currentPlayerCharacter) {
+      const currentHp = this.currentPlayerCharacter.hp || 0;
+      const maxHp = this.currentPlayerCharacter.maxHp || this.currentPlayerCharacter.stats?.hp || 100;
+      const hpPercent = currentHp / maxHp;
+      
       this.playerHPBar.clear();
       this.playerHPBar.fillStyle(0x00ff00);
       this.playerHPBar.fillRect(50, 390, 150 * hpPercent, 10);
@@ -548,7 +573,6 @@ export class BattleScene extends Phaser.Scene {
 
     // Update enemy UI
     if (this.currentEnemyCharacter) {
-      // Update enemy name, HP text, and HP bar
       if (this.enemyNameText) {
         this.enemyNameText.setText(this.currentEnemyCharacter.name);
       }
@@ -640,8 +664,28 @@ export class BattleScene extends Phaser.Scene {
   private initializeCharacterStats() {
     // Reset HP for all team characters to full at start of battle
     this.playerTeam.forEach(character => {
-      character.hp = character.stats.hp;
-      character.maxHp = character.stats.hp;
+      // Handle both original characters and newly combined ones
+      if (character.stats && character.stats.hp) {
+        character.hp = character.stats.hp;
+        character.maxHp = character.stats.hp;
+      } else {
+        // Fallback for any characters missing stats
+        console.warn(`Character ${character.name} missing stats, using defaults`);
+        character.hp = 100;
+        character.maxHp = 100;
+        character.stats = character.stats || { hp: 100, attack: 10, defense: 5 };
+      }
+
+      // Ensure moves exist
+      if (!character.moves || character.moves.length === 0) {
+        console.warn(`Character ${character.name} missing moves, adding defaults`);
+        character.moves = [
+          { name: 'Basic Attack', damage: 15, description: 'A basic attack' },
+          { name: 'Power Strike', damage: 20, description: 'A stronger attack' }
+        ];
+      }
+
+      console.log(`Initialized ${character.name}: HP=${character.hp}/${character.maxHp}, Stats=`, character.stats);
     });
 
     // Initialize enemy character

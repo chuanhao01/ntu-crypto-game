@@ -40,10 +40,38 @@ export class CharacterManager {
       
       if (response.ok) {
         const data = await response.json();
-        this.characters = data.characters;
+        
+        // Process characters to ensure proper structure
+        this.characters = data.characters.map((char: any) => ({
+          id: char.id,
+          name: char.name,
+          rarity: char.rarity,
+          character_type: char.character_type,
+          sprites: char.sprites,
+          stats: {
+            // Always use hp/attack/defense format for consistency
+            hp: char.stats.hp || 100,
+            attack: char.stats.attack || 10,
+            defense: char.stats.defense || 5
+          },
+          moves: char.moves || [
+            { name: 'Basic Attack', damage: 15, description: 'A basic attack' },
+            { name: 'Power Strike', damage: 20, description: 'A stronger attack' }
+          ]
+        }));
         
         this.isLoaded = true;
         console.log(`Loaded ${this.characters.length} characters from server`);
+        
+        // Log sample character to verify format
+        if (this.characters.length > 0) {
+          console.log('Sample character after loading:', {
+            name: this.characters[0].name,
+            stats: this.characters[0].stats,
+            moves: this.characters[0].moves
+          });
+        }
+        
         return true;
       } else {
         console.error('Failed to load characters:', response.status);
