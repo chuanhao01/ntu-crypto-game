@@ -1,13 +1,24 @@
-from typing import Union
+from typing import Union, Any
 import jwt
 import datetime
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from src.db import create_user, User, get_user_by_username, save_user_game_data, load_user_game_data, create_characters_table, get_all_characters
+from src.db import (
+    get_user_balance,
+    create_user,
+    User,
+    get_user_by_username,
+    save_user_game_data,
+    load_user_game_data,
+    create_characters_table,
+    get_all_characters,
+    get_user_id_from_username,
+    create_transaction,
+    Transaction
+)
 from src.crypto import hash_password, verify_password
-
 
 
 app = FastAPI()
@@ -30,32 +41,38 @@ app.add_middleware(
 
 security = HTTPBearer()
 
+
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
+        )
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
 
 class CreateAccount(BaseModel):
     username: str
     password: str
 
+
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 
 class SaveGameData(BaseModel):
     gold: int
     collection: list
     playerTeam: list
-
 
 
 @app.post("/account")
@@ -69,39 +86,38 @@ def create_account(create_account: CreateAccount):
     except Exception as e:
         raise HTTPException(status_code=400, detail="Username already exists")
 
+
 @app.post("/login")
 def login(login_request: LoginRequest):
     # Get user from database
     user = get_user_by_username(login_request.username)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    
+
     # Verify password
     if not verify_password(login_request.password, user.hashed_password):
         print("HEY")
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    
+
     # Generate JWT token
     payload = {
         "user_id": user.id,
         "username": user.username,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    
+
     return {
         "success": True,
         "token": token,
-        "user": {
-            "id": user.id,
-            "username": user.username
-        }
+        "user": {"id": user.id, "username": user.username},
     }
 
+
 @app.post("/save-game")
-def save_game(save_data: SaveGameData, user_data = Depends(verify_token)):
+def save_game(save_data: SaveGameData, user_data=Depends(verify_token)):
     user_id = user_data["user_id"]
-    
+
     try:
         success = save_user_game_data(user_id, save_data.dict())
         if success:
@@ -112,10 +128,11 @@ def save_game(save_data: SaveGameData, user_data = Depends(verify_token)):
         print(f"Save game error: {e}")
         raise HTTPException(status_code=500, detail="Failed to save game")
 
+
 @app.get("/load-game")
-def load_game(user_data = Depends(verify_token)):
+def load_game(user_data=Depends(verify_token)):
     user_id = user_data["user_id"]
-    
+
     try:
         game_data = load_user_game_data(user_id)
         if game_data:
@@ -125,41 +142,73 @@ def load_game(user_data = Depends(verify_token)):
             return {
                 "gold": 100,
                 "collection": [],
-                "playerTeam": [None, None, None, None, None]
+                "playerTeam": [None, None, None, None, None],
             }
     except Exception as e:
         print(f"Load game error: {e}")
         raise HTTPException(status_code=500, detail="Failed to load game")
+
 
 # Initialize characters table on startup
 @app.on_event("startup")
 async def startup_event():
     create_characters_table()
 
+
 @app.get("/characters")
 def get_characters():
     """Get all available characters"""
     characters = get_all_characters()
-    
+
     # Convert to format expected by frontend
     character_data = []
     for char in characters:
-        character_data.append({
-            "id": char.id,
-            "name": char.name,
-            "rarity": char.rarity,
-            "character_type": char.character_type,
-            "sprites": {
-                "default": f"{char.sprite_set}-default",
-                "spinning": f"{char.sprite_set}-spinning", 
-                "battleLeft": f"{char.sprite_set}-battle-left",
-                "battleRight": f"{char.sprite_set}-battle-right"
-            },
-            "stats": {
-                "hp": char.base_hp,
-                "attack": char.base_attack,
-                "defense": char.base_defense
+        character_data.append(
+            {
+                "id": char.id,
+                "name": char.name,
+                "rarity": char.rarity,
+                "character_type": char.character_type,
+                "sprites": {
+                    "default": f"{char.sprite_set}-default",
+                    "spinning": f"{char.sprite_set}-spinning",
+                    "battleLeft": f"{char.sprite_set}-battle-left",
+                    "battleRight": f"{char.sprite_set}-battle-right",
+                },
+                "stats": {
+                    "hp": char.base_hp,
+                    "attack": char.base_attack,
+                    "defense": char.base_defense,
+                },
             }
-        })
-    
+        )
+
     return {"characters": character_data}
+
+
+class UserDeposit(BaseModel):
+    username: str
+    amount: int
+    transaction_id: str
+
+
+@app.post("/user_deposit")
+def payment_callback(user_deposit: UserDeposit):
+    # TODO, verify and get value from transaction id
+    # print(user_deposit)
+    user_id = get_user_id_from_username(user_deposit.username)
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="Failed to find user")
+    create_transaction(Transaction(user_id, user_deposit.amount))
+    return ""
+
+class UserModel(BaseModel):
+    username: str
+
+@app.get("/user/balance")
+def get_balance(user: UserModel):
+    user_id = get_user_id_from_username(user.username)
+    if user_id is None:
+        raise HTTPException(status_code=500, detail="Failed to find user")
+    user_balance = get_user_balance(user_id)
+    return {"balance": user_balance}

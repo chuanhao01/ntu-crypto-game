@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card } from "@components/DemoComponents";
 import { Link } from "@components/Link";
-import { redirect, RedirectType } from "next/navigation";
+// import { redirect, RedirectType } from "next/navigation";
 
 export default function Signup() {
   const [password, setPassword] = useState("");
